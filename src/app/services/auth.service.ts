@@ -1,9 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable, tap } from 'rxjs';
-
-export type UserRole = 'usuario' | 'guardia' | 'administrador' | 'pantalla' | 'invitado';
+import { BehaviorSubject, Observable } from 'rxjs';
 
 export interface LoginPayload {
   email: string;
@@ -11,13 +8,25 @@ export interface LoginPayload {
 }
 
 export interface AuthUser {
-  id: string;
-  email: string;
-  nombre: string;
-  apodo: string;
-  role: UserRole;
-  token: string;
+  id?: number | string;
+  email?: string;
+  role?: string;
+  fullName?: string;
+  nickname?: string;
+  userCategory?: string;
 }
+
+export interface AuthResponse {
+  token?: string;
+  accessToken?: string;
+  user?: AuthUser;
+}
+
+export type RawAuthUser = AuthUser & {
+  nombre?: string;
+  apodo?: string;
+  name?: string;
+};
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -26,7 +35,7 @@ export class AuthService {
 
   private currentUser$ = new BehaviorSubject<AuthUser | null>(this.loadUser());
 
-  constructor(private http: HttpClient, private router: Router) {}
+  constructor(private router: Router) {}
 
   get user$(): Observable<AuthUser | null> {
     return this.currentUser$.asObservable();
@@ -37,57 +46,88 @@ export class AuthService {
   }
 
   get isAuthenticated(): boolean {
-    return !!this.currentUser$.value;
+    return !!this.getToken();
   }
 
   get isGuest(): boolean {
     return this.currentUser$.value?.role === 'invitado';
   }
 
-  login(payload: LoginPayload): Observable<AuthUser> {
-    return this.http.post<AuthUser>('/api/auth/login', payload).pipe(
-      tap(user => this.setSession(user))
-    );
-  }
-
   loginStatic(email: string): void {
-    const nombre = email.split('@')[0];
+    const nickname = email.split('@')[0] || 'Usuario';
     const user: AuthUser = {
       id: 'static-user',
       email,
-      nombre,
-      apodo: nombre,
       role: 'usuario',
-      token: 'static-token'
+      fullName: nickname,
+      nickname
     };
-    this.setSession(user);
+    this.setSession(user, 'static-token');
     this.router.navigate(['/dashboard-usuario']);
   }
 
   loginAsGuest(): void {
     const guest: AuthUser = {
       id: 'guest',
-      email: '',
-      nombre: 'Invitado',
-      apodo: 'Invitado',
       role: 'invitado',
-      token: ''
+      fullName: 'Invitado',
+      nickname: 'Invitado'
     };
-    this.setSession(guest);
+    this.setSession(guest, '');
     this.router.navigate(['/dashboard-usuario']);
   }
 
+  login(payload: LoginPayload): Observable<AuthUser> {
+    const nickname = payload.email.split('@')[0] || 'Usuario';
+    const user: AuthUser = {
+      id: 'static-user',
+      email: payload.email,
+      role: 'usuario',
+      fullName: nickname,
+      nickname
+    };
+    this.setSession(user, 'static-token');
+    return new BehaviorSubject(user).asObservable();
+  }
+
   logout(): void {
-    localStorage.removeItem(this.TOKEN_KEY);
-    localStorage.removeItem(this.USER_KEY);
+    this.clearSession();
     this.currentUser$.next(null);
     this.router.navigate(['/login']);
   }
 
-  private setSession(user: AuthUser): void {
-    localStorage.setItem(this.TOKEN_KEY, user.token);
+  getToken(): string {
+    return localStorage.getItem(this.TOKEN_KEY) ?? '';
+  }
+
+  setToken(token: string): void {
+    localStorage.setItem(this.TOKEN_KEY, token);
+  }
+
+  private setSession(user: AuthUser, token: string): void {
+    this.setToken(token);
     localStorage.setItem(this.USER_KEY, JSON.stringify(user));
     this.currentUser$.next(user);
+  }
+
+  normalizeUser(rawUser?: RawAuthUser, fallbackEmail = ''): AuthUser {
+    const email = rawUser?.email ?? fallbackEmail;
+    const fullName = rawUser?.fullName ?? rawUser?.name ?? rawUser?.nombre;
+    const nickname = rawUser?.nickname ?? rawUser?.apodo;
+
+    return {
+      id: rawUser?.id,
+      email,
+      role: rawUser?.role ?? rawUser?.userCategory,
+      fullName,
+      nickname,
+      userCategory: rawUser?.userCategory
+    };
+  }
+
+  private clearSession(): void {
+    localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.USER_KEY);
   }
 
   private loadUser(): AuthUser | null {

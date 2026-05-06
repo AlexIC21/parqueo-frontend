@@ -3,8 +3,8 @@ import { Routes } from '@angular/router';
 export const routes: Routes = [
   {
     path: '',
-    redirectTo: 'login',
-    pathMatch: 'full'
+    loadComponent: () =>
+      import('./Pages/dashboard-usuario/dashboard-usuario.component').then(m => m.DashboardUsuarioComponent)
   },
   {
     path: 'login',
@@ -23,6 +23,6 @@ export const routes: Routes = [
   },
   {
     path: '**',
-    redirectTo: 'login'
+    redirectTo: 'dashboard-usuario'
   }
 ];

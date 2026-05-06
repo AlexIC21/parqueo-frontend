@@ -1,7 +1,7 @@
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -14,11 +14,12 @@ import { AuthService } from '../../services/auth.service';
 export class LoginComponent {
   form: FormGroup;
   showPassword = false;
+  isLoading = false;
+  errorMessage = '';
 
   constructor(
     private fb: FormBuilder,
-    private auth: AuthService,
-    private router: Router
+    private auth: AuthService
   ) {
     this.form = this.fb.group({
       email: ['', [Validators.required, Validators.email]],
@@ -35,7 +36,11 @@ export class LoginComponent {
       return;
     }
 
+    this.isLoading = true;
+    this.errorMessage = '';
+
     this.auth.loginStatic(this.email.value);
+    this.isLoading = false;
   }
 
   enterAsGuest(): void {
