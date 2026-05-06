@@ -13,8 +13,6 @@ import { AuthService } from '../../services/auth.service';
 })
 export class LoginComponent {
   form: FormGroup;
-  loading = false;
-  errorMessage = '';
   showPassword = false;
 
   constructor(
@@ -37,19 +35,7 @@ export class LoginComponent {
       return;
     }
 
-    this.loading = true;
-    this.errorMessage = '';
-
-    this.auth.login(this.form.value).subscribe({
-      next: () => {
-        this.loading = false;
-        this.router.navigate(['/dashboard-usuario']);
-      },
-      error: (err) => {
-        this.loading = false;
-        this.errorMessage = err?.error?.message ?? 'Credenciales incorrectas. Intenta de nuevo.';
-      }
-    });
+    this.auth.loginStatic(this.email.value);
   }
 
   enterAsGuest(): void {

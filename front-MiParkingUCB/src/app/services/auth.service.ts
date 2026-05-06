@@ -50,6 +50,20 @@ export class AuthService {
     );
   }
 
+  loginStatic(email: string): void {
+    const nombre = email.split('@')[0];
+    const user: AuthUser = {
+      id: 'static-user',
+      email,
+      nombre,
+      apodo: nombre,
+      role: 'usuario',
+      token: 'static-token'
+    };
+    this.setSession(user);
+    this.router.navigate(['/dashboard-usuario']);
+  }
+
   loginAsGuest(): void {
     const guest: AuthUser = {
       id: 'guest',
