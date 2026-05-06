@@ -1,27 +1,79 @@
-# ParqueoFrontend
+# MiParking UCB — Frontend
 
-This project was generated with [Angular CLI](https://github.com/angular/angular-cli) version 17.3.17.
+Sistema inteligente de gestión de parqueo para la Universidad Católica Boliviana (campus Tupuraya). Informa en tiempo real la disponibilidad de espacios mediante una aplicación web y señalización inteligente, reduciendo el tiempo de búsqueda y la congestión vehicular dentro del campus.
 
-## Development server
+## Tecnologías
 
-Run `ng serve` for a dev server. Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
+- Angular 17 (standalone components)
+- TypeScript 5.4
+- SCSS
+- Angular Router con lazy loading
 
-## Code scaffolding
+## Requisitos previos
 
-Run `ng generate component component-name` to generate a new component. You can also use `ng generate directive|pipe|service|class|guard|interface|enum|module`.
+- Node.js 18 o superior
+- Angular CLI 17
 
-## Build
+```bash
+npm install -g @angular/cli
+```
 
-Run `ng build` to build the project. The build artifacts will be stored in the `dist/` directory.
+## Instalación
 
-## Running unit tests
+```bash
+npm install
+```
 
-Run `ng test` to execute the unit tests via [Karma](https://karma-runner.github.io).
+## Servidor de desarrollo
 
-## Running end-to-end tests
+```bash
+npm start
+```
 
-Run `ng e2e` to execute the end-to-end tests via a platform of your choice. To use this command, you need to first add a package that implements end-to-end testing capabilities.
+Abre `http://localhost:4200/` en tu navegador. La aplicación se recarga automáticamente al guardar cambios.
 
-## Further help
+## Compilar para producción
 
-To get more help on the Angular CLI use `ng help` or go check out the [Angular CLI Overview and Command Reference](https://angular.io/cli) page.
+```bash
+npm run build
+```
+
+Los archivos compilados se generan en la carpeta `dist/`.
+
+## Estructura del proyecto
+
+```
+src/
+├── app/
+│   ├── Pages/
+│   │   ├── login/            # Pantalla de inicio de sesión
+│   │   ├── register/         # Formulario de registro
+│   │   └── dashboard-usuario/# Panel principal de disponibilidad
+│   ├── services/
+│   │   └── auth.service.ts   # Autenticación y gestión de sesión
+│   ├── guards/
+│   │   └── auth.guard.ts     # Protección de rutas
+│   └── interceptors/
+│       └── auth.interceptor.ts # Inyección de token Bearer
+├── assets/
+│   └── images/               # Recursos gráficos
+└── styles.scss               # Estilos globales y variables CSS
+```
+
+## Perfiles de usuario
+
+| Perfil        | Descripción                        |
+|---------------|------------------------------------|
+| Usuario       | Estudiante o miembro de la UCB     |
+| Guardia       | Personal de seguridad del campus   |
+| Administrador | Gestión completa del sistema       |
+| Pantalla      | Modo señalización en entrada       |
+| Invitado      | Acceso de solo lectura sin cuenta  |
+
+## Rutas disponibles
+
+| Ruta                | Descripción                        | Acceso       |
+|---------------------|------------------------------------|--------------|
+| `/login`            | Inicio de sesión                   | Público      |
+| `/register`         | Crear cuenta nueva                 | Público      |
+| `/dashboard-usuario`| Panel de disponibilidad            | Todos        |
