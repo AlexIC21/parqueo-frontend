@@ -3,18 +3,18 @@ import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { BehaviorSubject, Observable, tap } from 'rxjs';
 
-export type UserRole = 'usuario' | 'docente' | 'administrador' | 'invitado';
+export type UserRole = 'usuario' | 'guardia' | 'administrador' | 'pantalla' | 'invitado';
 
 export interface LoginPayload {
   email: string;
   password: string;
-  role: UserRole;
 }
 
 export interface AuthUser {
   id: string;
   email: string;
   nombre: string;
+  apodo: string;
   role: UserRole;
   token: string;
 }
@@ -40,6 +40,10 @@ export class AuthService {
     return !!this.currentUser$.value;
   }
 
+  get isGuest(): boolean {
+    return this.currentUser$.value?.role === 'invitado';
+  }
+
   login(payload: LoginPayload): Observable<AuthUser> {
     return this.http.post<AuthUser>('/api/auth/login', payload).pipe(
       tap(user => this.setSession(user))
@@ -51,11 +55,12 @@ export class AuthService {
       id: 'guest',
       email: '',
       nombre: 'Invitado',
+      apodo: 'Invitado',
       role: 'invitado',
       token: ''
     };
     this.setSession(guest);
-    this.router.navigate(['/dashboard']);
+    this.router.navigate(['/dashboard-usuario']);
   }
 
   logout(): void {

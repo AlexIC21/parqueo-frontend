@@ -59,19 +59,6 @@
         }
       </div>
 
-      <!-- Role -->
-      <div class="field-group">
-        <label class="field-label" for="role">Ingresar como</label>
-        <div class="select-wrapper">
-          <select id="role" class="field-input field-select" formControlName="role">
-            @for (r of roles; track r.value) {
-              <option [value]="r.value">{{ r.label }}</option>
-            }
-          </select>
-          <svg class="select-arrow" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-      </div>
-
       <!-- Error message -->
       @if (errorMessage) {
         <div class="error-banner" role="alert">{{ errorMessage }}</div>
@@ -100,8 +87,8 @@
     </button>
 
     <p class="hint-text">
-      Para usar todas las funciones, inicia sesión o crea una
-      <a href="#">cuenta</a>
+      ¿No tienes cuenta?
+      <a routerLink="/register">Regístrate aquí</a>
     </p>
   </div>
 </div>
