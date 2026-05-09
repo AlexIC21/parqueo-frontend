@@ -1,7 +1,8 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -19,10 +20,18 @@ export class LoginComponent {
 
   constructor(
     private fb: FormBuilder,
-    private auth: AuthService
+    private auth: AuthService,
+    private router: Router
   ) {
     this.form = this.fb.group({
-      email: ['', [Validators.required, Validators.email]],
+      email: [
+        '',
+        [
+          Validators.required,
+          Validators.email,
+          Validators.pattern(/^[^@\s]+@ucb\.edu\.bo$/i)
+        ]
+      ],
       password: ['', [Validators.required, Validators.minLength(6)]]
     });
   }
@@ -39,11 +48,40 @@ export class LoginComponent {
     this.isLoading = true;
     this.errorMessage = '';
 
-    this.auth.loginStatic(this.email.value);
-    this.isLoading = false;
+    this.auth.login({
+      email: this.email.value,
+      password: this.password.value
+    }).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.router.navigate(['/dashboard-usuario']);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.isLoading = false;
+        this.errorMessage = this.getErrorMessage(error);
+      }
+    });
   }
 
   enterAsGuest(): void {
     this.auth.loginAsGuest();
+  }
+
+  private getErrorMessage(error: HttpErrorResponse): string {
+    const message = typeof error.error?.message === 'string' ? error.error.message : '';
+
+    if (message) {
+      return message;
+    }
+
+    if (error.status === 400) {
+      return 'El correo debe pertenecer al dominio @ucb.edu.bo.';
+    }
+
+    if (error.status === 401) {
+      return 'Correo o contraseña incorrectos.';
+    }
+
+    return 'No se pudo iniciar sesión. Intenta nuevamente.';
   }
 }

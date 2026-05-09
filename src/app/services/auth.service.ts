@@ -1,6 +1,8 @@
+import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Router } from '@angular/router';
-import { BehaviorSubject, Observable } from 'rxjs';
+import { BehaviorSubject, Observable, map } from 'rxjs';
+import { environment } from '../../environments/environment';
 
 export interface LoginPayload {
   email: string;
@@ -16,10 +18,10 @@ export interface AuthUser {
   userCategory?: string;
 }
 
-export interface AuthResponse {
-  token?: string;
+export interface LoginResponse {
+  message?: string;
   accessToken?: string;
-  user?: AuthUser;
+  user?: RawAuthUser;
 }
 
 export type RawAuthUser = AuthUser & {
@@ -35,7 +37,10 @@ export class AuthService {
 
   private currentUser$ = new BehaviorSubject<AuthUser | null>(this.loadUser());
 
-  constructor(private router: Router) {}
+  constructor(
+    private router: Router,
+    private http: HttpClient
+  ) {}
 
   get user$(): Observable<AuthUser | null> {
     return this.currentUser$.asObservable();
@@ -78,16 +83,14 @@ export class AuthService {
   }
 
   login(payload: LoginPayload): Observable<AuthUser> {
-    const nickname = payload.email.split('@')[0] || 'Usuario';
-    const user: AuthUser = {
-      id: 'static-user',
-      email: payload.email,
-      role: 'usuario',
-      fullName: nickname,
-      nickname
-    };
-    this.setSession(user, 'static-token');
-    return new BehaviorSubject(user).asObservable();
+    const url = `${environment.apiUrl}/auth/login`;
+    return this.http.post<LoginResponse>(url, payload).pipe(
+      map((response) => {
+        const user = this.normalizeUser(response.user, payload.email);
+        this.setSession(user, response.accessToken ?? '');
+        return user;
+      })
+    );
   }
 
   logout(): void {

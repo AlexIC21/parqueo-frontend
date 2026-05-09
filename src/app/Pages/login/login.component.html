@@ -27,6 +27,8 @@
           <span class="field-error">El correo es requerido.</span>
         } @else if (email.touched && email.errors?.['email']) {
           <span class="field-error">Ingresa un correo válido.</span>
+        } @else if (email.touched && email.errors?.['pattern']) {
+          <span class="field-error">El correo debe terminar en &#64;ucb.edu.bo.</span>
         }
       </div>
 
