@@ -9,6 +9,14 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface RegisterRequest {
+  fullName: string;
+  nickname: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
 export interface AuthUser {
   id?: number | string;
   email?: string;
@@ -22,6 +30,20 @@ export interface LoginResponse {
   message?: string;
   accessToken?: string;
   user?: RawAuthUser;
+}
+
+export interface RegisterResponse {
+  success: boolean;
+  message: string;
+  data?: {
+    id: number;
+    fullName: string;
+    nickname: string;
+    email: string;
+    role: string;
+    userCategory: string;
+    isActive: boolean;
+  };
 }
 
 export type RawAuthUser = AuthUser & {
@@ -83,7 +105,7 @@ export class AuthService {
   }
 
   login(payload: LoginPayload): Observable<AuthUser> {
-    const url = `${environment.apiUrl}/auth/login`;
+    const url = `${this.getApiBase()}/auth/login`;
     return this.http.post<LoginResponse>(url, payload).pipe(
       map((response) => {
         const user = this.normalizeUser(response.user, payload.email);
@@ -91,6 +113,11 @@ export class AuthService {
         return user;
       })
     );
+  }
+
+  register(payload: RegisterRequest): Observable<RegisterResponse> {
+    const url = `${this.getApiBase()}/auth/register`;
+    return this.http.post<RegisterResponse>(url, payload);
   }
 
   logout(): void {
@@ -131,6 +158,11 @@ export class AuthService {
   private clearSession(): void {
     localStorage.removeItem(this.TOKEN_KEY);
     localStorage.removeItem(this.USER_KEY);
+  }
+
+  private getApiBase(): string {
+    const base = environment.apiUrl.replace(/\/$/, '');
+    return base.includes('/api/v1') ? base : `${base}/api/v1`;
   }
 
   private loadUser(): AuthUser | null {

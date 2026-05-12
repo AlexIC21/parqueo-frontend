@@ -9,6 +9,7 @@
       <div class="success-box">
         <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
         <h2>¡Cuenta creada!</h2>
+        <p>{{ successMessage }}</p>
         <p>Redirigiendo al inicio de sesión...</p>
       </div>
     } @else {
@@ -56,20 +57,22 @@
 
         <!-- Email -->
         <div class="field-group">
-          <label class="field-label" for="email">Correo Gmail</label>
+          <label class="field-label" for="email">Correo institucional UCB</label>
           <input
             id="email"
             type="email"
             class="field-input"
             [class.field-input--error]="email.invalid && email.touched"
             formControlName="email"
-            placeholder="ejemplo@gmail.com"
+            placeholder="ejemplo@ucb.edu.bo"
             autocomplete="email"
           />
           @if (email.touched && email.errors?.['required']) {
             <span class="field-error">El correo es requerido.</span>
           } @else if (email.touched && email.errors?.['email']) {
             <span class="field-error">Ingresa un correo válido.</span>
+          } @else if (email.touched && email.errors?.['pattern']) {
+            <span class="field-error">El correo debe terminar en &#64;ucb.edu.bo.</span>
           }
         </div>
 
@@ -124,6 +127,8 @@
           </div>
           @if (confirmPassword.touched && confirmPassword.errors?.['required']) {
             <span class="field-error">Confirma tu contraseña.</span>
+          } @else if (confirmPassword.touched && confirmPassword.errors?.['minlength']) {
+            <span class="field-error">Mínimo 6 caracteres.</span>
           } @else if (passwordMismatch) {
             <span class="field-error">Las contraseñas no coinciden.</span>
           }

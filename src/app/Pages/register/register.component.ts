@@ -1,9 +1,14 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AbstractControl, FormBuilder, FormGroup, ReactiveFormsModule, ValidationErrors, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { AuthService } from '../../services/auth.service';
 
-const REMEMBER_KEY = 'mp_register_remember';
+const REMEMBER_FLAG_KEY = 'rememberRegisterData';
+const REMEMBER_EMAIL_KEY = 'rememberedEmail';
+const REMEMBER_NICKNAME_KEY = 'rememberedNickname';
+const UCB_EMAIL_PATTERN = /^[^@\s]+@ucb\.edu\.bo$/i;
 
 function passwordsMatch(group: AbstractControl): ValidationErrors | null {
   const pass = group.get('password')?.value;
@@ -25,15 +30,20 @@ export class RegisterComponent implements OnInit {
   showPassword = false;
   showConfirm = false;
   success = false;
+  successMessage = '';
 
-  constructor(private fb: FormBuilder, private router: Router) {
+  constructor(
+    private fb: FormBuilder,
+    private router: Router,
+    private auth: AuthService
+  ) {
     this.form = this.fb.group(
       {
-        nombreCompleto: ['', [Validators.required, Validators.minLength(3)]],
-        apodo: ['', [Validators.required, Validators.minLength(2)]],
-        email: ['', [Validators.required, Validators.email]],
+        nombreCompleto: ['', [Validators.required]],
+        apodo: ['', [Validators.required]],
+        email: ['', [Validators.required, Validators.email, Validators.pattern(UCB_EMAIL_PATTERN)]],
         password: ['', [Validators.required, Validators.minLength(6)]],
-        confirmPassword: ['', Validators.required],
+        confirmPassword: ['', [Validators.required, Validators.minLength(6)]],
         recordarme: [false]
       },
       { validators: passwordsMatch }
@@ -41,12 +51,15 @@ export class RegisterComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    const saved = localStorage.getItem(REMEMBER_KEY);
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        this.form.patchValue({ ...data, recordarme: true });
-      } catch { /* ignore */ }
+    const shouldRemember = localStorage.getItem(REMEMBER_FLAG_KEY) === 'true';
+    if (shouldRemember) {
+      const rememberedEmail = localStorage.getItem(REMEMBER_EMAIL_KEY) ?? '';
+      const rememberedNickname = localStorage.getItem(REMEMBER_NICKNAME_KEY) ?? '';
+      this.form.patchValue({
+        email: rememberedEmail,
+        apodo: rememberedNickname,
+        recordarme: true
+      });
     }
   }
 
@@ -68,24 +81,41 @@ export class RegisterComponent implements OnInit {
     }
 
     if (this.recordarme.value) {
-      const toSave = {
-        nombreCompleto: this.nombreCompleto.value,
-        apodo: this.apodo.value,
-        email: this.email.value
-      };
-      localStorage.setItem(REMEMBER_KEY, JSON.stringify(toSave));
+      localStorage.setItem(REMEMBER_FLAG_KEY, 'true');
+      localStorage.setItem(REMEMBER_EMAIL_KEY, this.email.value);
+      localStorage.setItem(REMEMBER_NICKNAME_KEY, this.apodo.value);
     } else {
-      localStorage.removeItem(REMEMBER_KEY);
+      localStorage.removeItem(REMEMBER_FLAG_KEY);
+      localStorage.removeItem(REMEMBER_EMAIL_KEY);
+      localStorage.removeItem(REMEMBER_NICKNAME_KEY);
     }
 
     this.loading = true;
     this.errorMessage = '';
 
-    // Placeholder — conectar al backend cuando esté listo
-    setTimeout(() => {
-      this.loading = false;
-      this.success = true;
-      setTimeout(() => this.router.navigate(['/login']), 1800);
-    }, 1000);
+    this.auth.register({
+      fullName: this.nombreCompleto.value,
+      nickname: this.apodo.value,
+      email: this.email.value,
+      password: this.password.value,
+      confirmPassword: this.confirmPassword.value
+    }).subscribe({
+      next: (response) => {
+        this.loading = false;
+        this.success = true;
+        this.errorMessage = '';
+        this.successMessage = response?.message || 'Usuario registrado correctamente.';
+        setTimeout(() => this.router.navigate(['/login']), 1800);
+      },
+      error: (error: HttpErrorResponse) => {
+        this.loading = false;
+        this.errorMessage = this.getErrorMessage(error);
+      }
+    });
+  }
+
+  private getErrorMessage(error: HttpErrorResponse): string {
+    const message = typeof error.error?.message === 'string' ? error.error.message : '';
+    return message || 'No se pudo registrar el usuario.';
   }
 }
