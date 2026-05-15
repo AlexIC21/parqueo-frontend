@@ -5,21 +5,32 @@
 }
 
 :root {
-  --color-primary: #1a56db;
-  --color-primary-dark: #1240a8;
-  --color-primary-light: #e8f0fe;
-  --color-text: #1a1a2e;
-  --color-text-muted: #6b7280;
-  --color-border: #d1d5db;
+  --app-primary: #0d47a1;
+  --app-primary-dark: #0b1f4d;
+  --app-primary-soft: #e8f2ff;
+  --app-bg: #f5f7fa;
+  --app-text: #0b1633;
+  --app-muted: #64748b;
+  --app-card: #ffffff;
+  --app-success: #22c55e;
+  --app-danger: #ef4444;
+  --app-warning: #f59e0b;
+  --color-primary: var(--app-primary);
+  --color-primary-dark: var(--app-primary-dark);
+  --color-primary-light: var(--app-primary-soft);
+  --color-text: var(--app-text);
+  --color-text-muted: var(--app-muted);
+  --color-border: #d8e0ea;
   --color-bg: #f5f7fa;
   --color-white: #ffffff;
-  --color-error: #dc2626;
-  --color-link: #1a56db;
+  --color-error: var(--app-danger);
+  --color-link: var(--app-primary);
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
-  --shadow-card: 0 4px 24px rgba(0, 0, 0, 0.08);
+  --shadow-card: 0 16px 40px rgba(15, 23, 42, 0.09);
   --font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --app-header: linear-gradient(135deg, #0b1f4d, #0d47a1 58%, #0d6dcc);
 }
 
 html, body {
@@ -50,4 +61,17 @@ button {
 
 input, select {
   font-family: inherit;
+}
+
+.mini-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #bfdbfe;
+  border-top-color: var(--app-primary);
+  border-radius: 50%;
+  animation: app-spin 0.7s linear infinite;
+}
+
+@keyframes app-spin {
+  to { transform: rotate(360deg); }
 }

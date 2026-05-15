@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -20,8 +20,7 @@ export class LoginComponent {
 
   constructor(
     private fb: FormBuilder,
-    private auth: AuthService,
-    private router: Router
+    private auth: AuthService
   ) {
     this.form = this.fb.group({
       email: [
@@ -54,7 +53,7 @@ export class LoginComponent {
     }).subscribe({
       next: () => {
         this.isLoading = false;
-        this.router.navigate(['/dashboard-usuario']);
+        this.auth.redirectByRole();
       },
       error: (error: HttpErrorResponse) => {
         this.isLoading = false;

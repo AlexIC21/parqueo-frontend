@@ -1,0 +1,127 @@
+<div class="map-page">
+  <header class="map-header">
+    <div class="header-inner">
+      <button class="back-btn" type="button" (click)="goBack()" aria-label="Volver al dashboard">
+        <span class="back-icon" aria-hidden="true">&larr;</span>
+        Volver
+      </button>
+
+      <div class="header-text">
+        <h1>Mapa del Parqueo UCB-CBBA TUPURAYA 1</h1>
+        <p>Vista en tiempo real</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="map-content">
+    <section class="map-card">
+      <div class="card-heading">
+        <div>
+          <h2>Plano del Parqueo - Vista interactiva en tiempo real</h2>
+          @if (updatedAt) {
+            <p>Actualizado: {{ updatedAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+          }
+        </div>
+      </div>
+
+      @if (errorMessage) {
+        <p class="state-message state-message--error">{{ errorMessage }}</p>
+      } @else {
+        @if (isLoading || isPaintingMap) {
+          <p class="state-message map-loading">
+            <span class="mini-spinner" aria-hidden="true"></span>
+            {{ isLoading ? 'Cargando mapa...' : 'Aplicando estados...' }}
+          </p>
+        }
+
+        <div class="status-summary" aria-label="Resumen de estados">
+          <div class="status-card status-card--free">
+            <span>Libre</span>
+            <strong>{{ freeCount }}</strong>
+          </div>
+          <div class="status-card status-card--occupied">
+            <span>Ocupado</span>
+            <strong>{{ occupiedCount }}</strong>
+          </div>
+          <div class="status-card status-card--maintenance">
+            <span>Mantenimiento</span>
+            <strong>{{ maintenanceCount }}</strong>
+          </div>
+        </div>
+
+        <div class="map-wrapper">
+          <object
+            #parkingSvg
+            data="assets/maps/parking-map.svg"
+            type="image/svg+xml"
+            class="parking-map-svg"
+            (load)="onSvgLoaded()">
+          </object>
+        </div>
+
+        @if (infoMessage) {
+          <p class="state-message">{{ infoMessage }}</p>
+        }
+
+        @if (realtimeMessage) {
+          <p class="realtime-message">{{ realtimeMessage }}</p>
+        }
+
+        <div class="legend" aria-label="Leyenda de estados">
+          <div class="legend-item"><span class="legend-swatch available"></span>Libre</div>
+          <div class="legend-item"><span class="legend-swatch occupied"></span>Ocupado</div>
+          <div class="legend-item"><span class="legend-swatch maintenance"></span>Mantenimiento</div>
+        </div>
+
+        @if (selectedSpace && !isGuardia) {
+          <article class="selected-space selected-space--info">
+            <span>Espacio seleccionado</span>
+            <strong>{{ selectedSpace.code }}</strong>
+            <p>{{ getVehicleTypeLabel(selectedSpace.vehicleType) }} - {{ getStatusLabel(selectedSpace.status) }}</p>
+          </article>
+        }
+
+        @if (selectedSpace && isGuardia) {
+          <article #statusPanel class="status-panel">
+            <div class="status-panel__header">
+              <div>
+                <h3>Actualizar estado del espacio</h3>
+                <p>Espacio seleccionado: <strong>{{ selectedSpace.code }}</strong></p>
+              </div>
+              <span class="status-pill" [style.background]="getColorByStatus(selectedSpace.status)">
+                {{ getStatusLabel(selectedSpace.status) }}
+              </span>
+            </div>
+
+            <p class="status-panel__meta">
+              Estado actual: <strong>{{ getStatusLabel(selectedSpace.status) }}</strong>
+            </p>
+
+            <div class="guard-actions" aria-label="Actualizar estado del espacio">
+              <button class="guard-action guard-action--free" type="button" (click)="updateSelectedSpaceStatus('LIBRE')" [disabled]="isUpdatingSpace">
+                Libre
+              </button>
+              <button class="guard-action guard-action--occupied" type="button" (click)="updateSelectedSpaceStatus('OCUPADO')" [disabled]="isUpdatingSpace">
+                Ocupado
+              </button>
+              <button class="guard-action guard-action--maintenance" type="button" (click)="updateSelectedSpaceStatus('MANTENIMIENTO')" [disabled]="isUpdatingSpace">
+                Mantenimiento
+              </button>
+              <button type="button" class="guard-action guard-action--neutral" (click)="cancelSpaceSelection()" [disabled]="isUpdatingSpace">
+                Cancelar selección
+              </button>
+            </div>
+
+            @if (spaceUpdateMessage) {
+              <p class="space-message space-message--success">{{ spaceUpdateMessage }}</p>
+            }
+
+            @if (spaceUpdateError) {
+              <p class="space-message space-message--error">{{ spaceUpdateError }}</p>
+            }
+          </article>
+        }
+      }
+    </section>
+  </main>
+</div>

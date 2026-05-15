@@ -1,41 +1,39 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../environments/environment';
-
-export interface ScheduleItem {
-  id: number;
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  subject: string;
-  classroom: string;
-  isActive: boolean;
-}
-
-export interface ScheduleListResponse {
-  schedules: ScheduleItem[];
-}
-
-export interface ScheduleCreatePayload {
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-  subject: string;
-  classroom: string;
-}
+import { AuthService } from './auth.service';
+import { CreateScheduleRequest, MyScheduleResponse } from '../models/schedule.model';
 
 @Injectable({ providedIn: 'root' })
 export class ScheduleService {
-  private readonly baseUrl = environment.apiUrl;
+  constructor(
+    private http: HttpClient,
+    private auth: AuthService
+  ) {}
 
-  constructor(private http: HttpClient) {}
+  getMySchedule(): Observable<MyScheduleResponse> {
+    const token = this.auth.getToken();
+    const headers = token
+      ? new HttpHeaders({ Authorization: `Bearer ${token}` })
+      : new HttpHeaders();
 
-  getSchedules(): Observable<ScheduleListResponse> {
-    return this.http.get<ScheduleListResponse>(`${this.baseUrl}/schedules`);
+    return this.http.get<MyScheduleResponse>(
+      `${environment.apiUrl}/users/me/schedule`,
+      { headers }
+    );
   }
 
-  createSchedule(payload: ScheduleCreatePayload): Observable<ScheduleItem> {
-    return this.http.post<ScheduleItem>(`${this.baseUrl}/schedules`, payload);
+  createMySchedule(payload: CreateScheduleRequest): Observable<MyScheduleResponse> {
+    const token = this.auth.getToken();
+    const headers = token
+      ? new HttpHeaders({ Authorization: `Bearer ${token}` })
+      : new HttpHeaders();
+
+    return this.http.post<MyScheduleResponse>(
+      `${environment.apiUrl}/users/me/schedule`,
+      payload,
+      { headers }
+    );
   }
 }

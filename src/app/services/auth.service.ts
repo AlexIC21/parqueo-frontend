@@ -23,12 +23,15 @@ export interface AuthUser {
   role?: string;
   fullName?: string;
   nickname?: string;
+  name?: string;
   userCategory?: string;
 }
 
 export interface LoginResponse {
   message?: string;
   accessToken?: string;
+  access_token?: string;
+  token?: string;
   user?: RawAuthUser;
 }
 
@@ -72,12 +75,18 @@ export class AuthService {
     return this.currentUser$.value;
   }
 
-  get isAuthenticated(): boolean {
-    return !!this.getToken();
-  }
-
   get isGuest(): boolean {
     return this.currentUser$.value?.role === 'invitado';
+  }
+
+  getDefaultRouteForUser(user: AuthUser | null = this.currentUser): string {
+    const role = this.normalizeRole(user?.role);
+
+    if (role === 'GUARDIA') {
+      return '/dashboard-guardia';
+    }
+
+    return '/dashboard-usuario';
   }
 
   loginStatic(email: string): void {
@@ -90,7 +99,7 @@ export class AuthService {
       nickname
     };
     this.setSession(user, 'static-token');
-    this.router.navigate(['/dashboard-usuario']);
+    this.router.navigate([this.getDefaultRouteForUser(user)]);
   }
 
   loginAsGuest(): void {
@@ -101,7 +110,7 @@ export class AuthService {
       nickname: 'Invitado'
     };
     this.setSession(guest, '');
-    this.router.navigate(['/dashboard-usuario']);
+    this.router.navigate(['/']);
   }
 
   login(payload: LoginPayload): Observable<AuthUser> {
@@ -109,7 +118,7 @@ export class AuthService {
     return this.http.post<LoginResponse>(url, payload).pipe(
       map((response) => {
         const user = this.normalizeUser(response.user, payload.email);
-        this.setSession(user, response.accessToken ?? '');
+        this.setSession(user, response.accessToken ?? response.access_token ?? response.token ?? '');
         return user;
       })
     );
@@ -126,8 +135,24 @@ export class AuthService {
     this.router.navigate(['/login']);
   }
 
-  getToken(): string {
-    return localStorage.getItem(this.TOKEN_KEY) ?? '';
+  isAuthenticated(): boolean {
+    return !!this.getToken() && !!this.getCurrentUser();
+  }
+
+  getToken(): string | null {
+    return localStorage.getItem(this.TOKEN_KEY);
+  }
+
+  getCurrentUser(): AuthUser | null {
+    return this.currentUser$.value ?? this.loadUser();
+  }
+
+  getUserRole(): string | null {
+    return this.normalizeRole(this.getCurrentUser()?.role);
+  }
+
+  redirectByRole(): void {
+    this.router.navigate([this.getDefaultRouteForUser(this.getCurrentUser())]);
   }
 
   setToken(token: string): void {
@@ -172,5 +197,10 @@ export class AuthService {
     } catch {
       return null;
     }
+  }
+
+  private normalizeRole(role?: string): string | null {
+    const normalizedRole = role?.trim().toUpperCase();
+    return normalizedRole || null;
   }
 }

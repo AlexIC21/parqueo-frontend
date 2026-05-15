@@ -1,0 +1,112 @@
+<div class="schedule-page">
+  <header class="schedule-header">
+    <div class="header-inner">
+      <button class="back-btn" type="button" (click)="goBack()" aria-label="Volver al dashboard">
+        <span class="back-icon" aria-hidden="true">&larr;</span>
+        Volver
+      </button>
+
+      <div class="header-text">
+        <h1>Mi Horario de Clases</h1>
+        <p>Gestiona tu horario acad&eacute;mico</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="schedule-content">
+    <section class="schedule-card add-class-card" aria-labelledby="add-class-title">
+      <div class="card-heading">
+        <h2 id="add-class-title">Agregar Nueva Clase</h2>
+        <p>Completa los datos principales de tu materia.</p>
+      </div>
+
+      @if (formMessage) {
+        <p class="form-alert form-alert--success">{{ formMessage }}</p>
+      }
+
+      @if (formErrorMessage) {
+        <p class="form-alert form-alert--error">{{ formErrorMessage }}</p>
+      }
+
+      <form class="class-form" (ngSubmit)="addClass()">
+        <label class="field-group" for="day">
+          <span>D&iacute;a</span>
+          <select id="day" name="day" [(ngModel)]="newClass.dayOfWeek">
+            <option value="">Seleccionar</option>
+            @for (day of weekDays; track day.key) {
+              <option [value]="day.value">{{ formatDay(day.value) }}</option>
+            }
+          </select>
+        </label>
+
+        <label class="field-group" for="startTime">
+          <span>Hora inicio</span>
+          <input id="startTime" name="startTime" type="time" [(ngModel)]="newClass.startTime" />
+        </label>
+
+        <label class="field-group" for="endTime">
+          <span>Hora fin</span>
+          <input id="endTime" name="endTime" type="time" [(ngModel)]="newClass.endTime" />
+        </label>
+
+        <label class="field-group" for="subject">
+          <span>Materia</span>
+          <input id="subject" name="subject" type="text" placeholder="Ej. C&aacute;lculo I" [(ngModel)]="newClass.subject" />
+        </label>
+
+        <label class="field-group" for="classroom">
+          <span>Aula</span>
+          <input id="classroom" name="classroom" type="text" placeholder="Ej. B-204" [(ngModel)]="newClass.classroom" />
+        </label>
+
+        <button class="submit-btn" type="submit" [disabled]="isSaving">
+          {{ isSaving ? 'Agregando...' : '+ Agregar Clase' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="schedule-card weekly-card" aria-labelledby="weekly-title">
+      <div class="card-heading">
+        <h2 id="weekly-title">Horario Semanal</h2>
+        <p>Vista organizada por d&iacute;a.</p>
+      </div>
+
+      @if (isLoading) {
+        <p class="state-message">Cargando horario...</p>
+      } @else if (errorMessage) {
+        <p class="state-message state-message--error">{{ errorMessage }}</p>
+      } @else {
+        <div class="week-grid">
+          @for (day of weekDays; track day.key) {
+            <article class="day-column">
+              <h3>{{ day.label }}</h3>
+
+              <div class="day-body">
+                @if (getClassesForDay(day.key).length) {
+                  @for (item of getClassesForDay(day.key); track item.id) {
+                    <div class="class-item">
+                      <strong>{{ item.subject }}</strong>
+                      <span class="class-time">{{ item.startTime }} - {{ item.endTime }}</span>
+                      @if (item.classroom) {
+                        <span class="class-meta">Aula {{ item.classroom }}</span>
+                      }
+                      @if (item.teacher) {
+                        <span class="class-meta">{{ item.teacher }}</span>
+                      }
+                    </div>
+                  }
+                } @else {
+                  <p class="empty-day">Sin clases</p>
+                }
+              </div>
+            </article>
+          }
+        </div>
+
+        @if (emptyMessage) {
+          <p class="state-message state-message--empty">{{ emptyMessage }}</p>
+        }
+      }
+    </section>
+  </main>
+</div>

@@ -4,23 +4,25 @@
   <nav class="navbar">
     <div class="navbar-brand">
       <span class="navbar-title">MiParking UCB</span>
-      <span class="navbar-welcome">Bienvenido (Invitado)</span>
+      <span class="navbar-welcome">Bienvenido {{ welcomeName }}</span>
     </div>
-    <button class="navbar-btn" (click)="goToLogin()">Iniciar sesión</button>
+    <button class="navbar-btn" (click)="onNavbarAction()">
+      {{ isAuthenticated ? 'Cerrar sesión' : 'Iniciar sesión' }}
+    </button>
   </nav>
 
   <!-- Action buttons -->
   <div class="actions-bar">
     <button
       class="action-btn action-btn--primary"
-      (click)="onRestrictedAction()"
+      (click)="goToMap()"
     >
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
       Ver Mapa del Parqueo
     </button>
     <button
       class="action-btn action-btn--outline"
-      (click)="onRestrictedAction()"
+      (click)="goToSchedule()"
     >
       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
       Mi Horario
@@ -72,9 +74,106 @@
           }
           {{ statusMessage }}
         </span>
+        @if (updatedAt) {
+          <span class="ocupacion-updated">
+            Actualizado: {{ updatedAt | date: 'dd/MM/yyyy HH:mm' }}
+          </span>
+        }
       </div>
     }
   </section>
+
+  @if (canShowAlertPreferences) {
+    <section class="section-card alerts-card">
+      <div class="alerts-header">
+        <h2 class="section-title alerts-title">Configuraci&oacute;n de alertas</h2>
+      </div>
+
+      @if (isLoadingAlertPreferences) {
+        <p class="state-message">Cargando configuraci&oacute;n de alertas...</p>
+      }
+
+      <div class="alerts-grid alert-fields-grid">
+        <label class="alert-field" for="reminderMinutesBefore">
+          <span>Avisar con anticipaci&oacute;n</span>
+          <input
+            id="reminderMinutesBefore"
+            name="reminderMinutesBefore"
+            type="number"
+            min="1"
+            max="180"
+            step="1"
+            placeholder="Ej. 30"
+            [(ngModel)]="alertPreferences.minutesBefore"
+            (input)="onAlertPreferencesChange()"
+          />
+          <small>Ingresa cu&aacute;ntos minutos antes deseas recibir la alerta.</small>
+        </label>
+
+        <label class="alert-field" for="alertsEnabled">
+          <span>Estado de alertas</span>
+          <select
+            id="alertsEnabled"
+            name="alertsEnabled"
+            [(ngModel)]="alertPreferences.enabled"
+            (change)="onAlertPreferencesChange()"
+          >
+            <option [ngValue]="true">Activadas</option>
+            <option [ngValue]="false">Desactivadas</option>
+          </select>
+        </label>
+
+        <label class="alert-field" for="vehicleType">
+          <span>Tipo de veh&iacute;culo</span>
+          <select
+            id="vehicleType"
+            name="vehicleType"
+            [(ngModel)]="alertPreferences.vehicleType"
+            (change)="onAlertPreferencesChange()"
+          >
+            <option value="AUTO">Auto</option>
+            <option value="MOTO">Moto</option>
+          </select>
+        </label>
+
+        <label class="alert-check" for="onlyFirstClassPerDay">
+          <input
+            id="onlyFirstClassPerDay"
+            name="onlyFirstClassPerDay"
+            type="checkbox"
+            [(ngModel)]="alertPreferences.onlyFirstClassPerDay"
+            (change)="onAlertPreferencesChange()"
+          />
+          <span>Avisar solo antes de la primera clase del d&iacute;a</span>
+        </label>
+
+        <div class="alerts-actions">
+          <button
+            class="alerts-save-btn"
+            type="button"
+            (click)="saveAlertPreferences()"
+            [disabled]="isSavingAlertPreferences"
+          >
+            {{ isSavingAlertPreferences ? 'Guardando...' : 'Guardar configuraci&oacute;n' }}
+          </button>
+        </div>
+      </div>
+
+      @if (isSavingAlertPreferences) {
+        <p class="alerts-status">Guardando configuraci&oacute;n...</p>
+      }
+
+      @if (alertPreferencesMessage) {
+        <p class="alerts-status alerts-status--success">{{ alertPreferencesMessage }}</p>
+      }
+
+      @if (alertPreferencesError) {
+        <p class="alerts-error">{{ alertPreferencesError }}</p>
+      }
+
+      <p class="alerts-summary">{{ getAlertSummary() }}</p>
+    </section>
+  }
 
 </div><!-- /page-wrapper -->
 

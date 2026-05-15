@@ -1,0 +1,71 @@
+<div class="guard-page">
+  <header class="guard-header">
+    <div class="header-copy">
+      <h1>MiParking UCB - Panel de Guardia</h1>
+      <p>Sistema de registro</p>
+    </div>
+
+    <div class="header-actions">
+      <button class="header-btn header-btn--map" type="button" (click)="goToMap()">Ver Mapa</button>
+      <button class="header-btn" type="button" (click)="logout()">Cerrar sesi&oacute;n</button>
+    </div>
+  </header>
+
+  <main class="guard-content">
+    <section class="guard-card incidents-card">
+      <div class="card-header">
+        <h2>Incidencias</h2>
+        <button class="incident-btn" type="button" (click)="registerIncident()">+ Registrar incidencia</button>
+      </div>
+
+      @if (incidencias.length) {
+        <ul class="incident-list">
+          @for (incidencia of incidencias; track incidencia) {
+            <li>{{ incidencia }}</li>
+          }
+        </ul>
+      } @else {
+        <p class="empty-state">No hay incidencias registradas</p>
+      }
+    </section>
+
+    <section class="guard-card">
+      <h2>Panel del guardia</h2>
+
+      <div class="control-grid">
+        <article class="control-block">
+          <div>
+            <span>Autos por salir pronto</span>
+            <strong>{{ autosPorSalir }}</strong>
+          </div>
+          <div class="control-actions">
+            <button class="control-btn control-btn--warning" type="button" (click)="incrementAutos()">+1 Auto por salir</button>
+            <button class="control-btn control-btn--neutral" type="button" (click)="decrementAutos()">-1 Auto por salir</button>
+          </div>
+        </article>
+
+        <article class="control-block">
+          <div>
+            <span>Motos por salir pronto</span>
+            <strong>{{ motosPorSalir }}</strong>
+          </div>
+          <div class="control-actions">
+            <button class="control-btn control-btn--warning" type="button" (click)="incrementMotos()">+1 Moto por salir</button>
+            <button class="control-btn control-btn--neutral" type="button" (click)="decrementMotos()">-1 Moto por salir</button>
+          </div>
+        </article>
+
+        <article class="control-block">
+          <div>
+            <span>Cola vehicular</span>
+            <strong>{{ colaVehicular }}</strong>
+          </div>
+          <div class="control-actions">
+            <button class="control-btn control-btn--primary" type="button" (click)="incrementQueue()">+1 en cola</button>
+            <button class="control-btn control-btn--neutral" type="button" (click)="decrementQueue()">-1 en cola</button>
+          </div>
+        </article>
+      </div>
+    </section>
+  </main>
+</div>

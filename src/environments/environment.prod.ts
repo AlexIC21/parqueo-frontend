@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://api.miparkingucb.com'
+  apiUrl: 'https://URL-REAL-DEL-BACKEND/api/v1'
 };
