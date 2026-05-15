@@ -1,4 +1,4 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://URL-REAL-DEL-BACKEND/api/v1'
+  apiUrl: 'https://parqueo-backend-production.up.railway.app/api/v1'
 };
