@@ -17,8 +17,7 @@ import {
 } from '../../models/alert-preferences.model';
 import {
   ParkingAvailabilityData,
-  ParkingAvailabilityResponse,
-  ParkingGeneralStatus
+  ParkingAvailabilityResponse
 } from '../../models/parking.model';
 import {
   ClassScheduleAlertData,
@@ -121,70 +120,8 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     return this.availability?.cars.available ?? 0;
   }
 
-  get autosCapacity(): number {
-    return this.availability?.cars.totalCapacity ?? 0;
-  }
-
   get motosAvailable(): number {
     return this.availability?.motorcycles.available ?? 0;
-  }
-
-  get motosCapacity(): number {
-    return this.availability?.motorcycles.totalCapacity ?? 0;
-  }
-
-  get totalOccupancyPercent(): number {
-    if (!this.availability) {
-      return 0;
-    }
-
-    const percent = this.availability.total.occupancyPercentage;
-    if (Number.isFinite(percent)) {
-      return Math.round(percent);
-    }
-
-    if (!this.availability.total.totalCapacity) {
-      return 0;
-    }
-
-    return Math.round(
-      (this.availability.total.occupied / this.availability.total.totalCapacity) * 100
-    );
-  }
-
-  get status(): ParkingGeneralStatus {
-    if (this.availability?.generalStatus) {
-      return this.availability.generalStatus;
-    }
-
-    const percent = this.totalOccupancyPercent;
-    if (percent >= 100) {
-      return 'LLENO';
-    }
-    if (percent >= 85) {
-      return 'CASI_LLENO';
-    }
-    if (percent >= 60) {
-      return 'DEMANDA_MODERADA';
-    }
-    return 'DISPONIBLE';
-  }
-
-  get statusMessage(): string {
-    switch (this.status) {
-      case 'DEMANDA_MODERADA':
-        return 'Demanda moderada';
-      case 'CASI_LLENO':
-        return 'Casi lleno';
-      case 'LLENO':
-        return 'Lleno';
-      default:
-        return 'Disponible';
-    }
-  }
-
-  get isAvailableStatus(): boolean {
-    return this.status === 'DISPONIBLE';
   }
 
   get isAuthenticated(): boolean {
@@ -203,10 +140,6 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
       user?.name?.trim() ||
       ''
     );
-  }
-
-  get updatedAt(): string {
-    return this.availability?.updatedAt ?? '';
   }
 
   getAlertSummary(): string {

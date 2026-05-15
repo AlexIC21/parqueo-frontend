@@ -22,12 +22,14 @@ export interface ParkingAvailabilityData {
 export interface VehicleAvailability {
   available: number;
   occupied: number;
+  maintenance?: number;
   totalCapacity: number;
 }
 
 export interface TotalAvailability {
   available: number;
   occupied: number;
+  maintenance?: number;
   totalCapacity: number;
   occupancyPercentage: number;
 }
