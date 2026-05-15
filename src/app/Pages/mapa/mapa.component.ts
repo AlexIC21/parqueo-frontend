@@ -24,7 +24,6 @@ type NormalizedSpaceStatus = 'LIBRE' | 'OCUPADO' | 'MANTENIMIENTO' | 'UNKNOWN';
 })
 export class MapaComponent implements OnInit, OnDestroy {
   @ViewChild('parkingSvg') parkingSvg?: ElementRef<HTMLObjectElement>;
-  @ViewChild('statusPanel') statusPanel?: ElementRef<HTMLElement>;
 
   mapData: ParkingMapData | null = null;
   selectedSpace: ParkingSpace | null = null;
@@ -100,11 +99,14 @@ export class MapaComponent implements OnInit, OnDestroy {
     if (element) {
       element.style.cursor = 'pointer';
       element.style.pointerEvents = 'all';
+      element.style.touchAction = 'manipulation';
       element.querySelectorAll('text').forEach((text) => {
         (text as SVGElement).style.pointerEvents = 'none';
       });
       element.onclick = null;
-      element.onclick = () => {
+      element.onpointerup = (event: PointerEvent) => {
+        event.preventDefault();
+        event.stopPropagation();
         this.zone.run(() => this.handleSpaceClick(space));
       };
     }
@@ -115,28 +117,47 @@ export class MapaComponent implements OnInit, OnDestroy {
     this.spaceUpdateMessage = '';
     this.selectedSpace = space;
 
-    if (this.isGuardia) {
-      this.scrollToStatusPanel();
+    if (!this.isGuardia) {
+      return;
     }
+
+    this.changeSpaceStatus(space, this.getNextStatus(space));
   }
 
   cancelSpaceSelection(): void {
+    this.clearSelectedSpace();
+  }
+
+  clearSelectedSpace(): void {
     this.selectedSpace = null;
     this.spaceUpdateError = '';
     this.spaceUpdateMessage = '';
   }
 
-  updateSelectedSpaceStatus(status: EditableParkingSpaceStatus): void {
-    if (!this.selectedSpace || !this.isGuardia || this.isUpdatingSpace) {
+  getNextStatus(space: ParkingSpace): EditableParkingSpaceStatus {
+    switch (this.normalizeStatus(space.status)) {
+      case 'LIBRE':
+        return 'OCUPADO';
+      case 'OCUPADO':
+        return 'MANTENIMIENTO';
+      case 'MANTENIMIENTO':
+      default:
+        return 'LIBRE';
+    }
+  }
+
+  changeSpaceStatus(space: ParkingSpace, status: EditableParkingSpaceStatus): void {
+    if (!this.isGuardia || this.isUpdatingSpace) {
       return;
     }
 
+    this.selectedSpace = space;
     this.isUpdatingSpace = true;
     this.spaceUpdateError = '';
     this.spaceUpdateMessage = '';
 
     this.mapService
-      .updateSpaceStatus(this.selectedSpace.id, status)
+      .updateSpaceStatus(space.id, status)
       .pipe(
         take(1),
         finalize(() => {
@@ -146,7 +167,7 @@ export class MapaComponent implements OnInit, OnDestroy {
       .subscribe({
         next: (response) => {
           this.handleSpaceUpdated(response.data);
-          this.spaceUpdateMessage = 'Estado actualizado correctamente';
+          this.spaceUpdateMessage = 'Estado actualizado';
         },
         error: (error: HttpErrorResponse) => {
           if (error.status === 403) {
@@ -157,15 +178,6 @@ export class MapaComponent implements OnInit, OnDestroy {
           this.spaceUpdateError = 'No se pudo actualizar el estado del espacio.';
         }
       });
-  }
-
-  private scrollToStatusPanel(): void {
-    setTimeout(() => {
-      this.statusPanel?.nativeElement.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start'
-      });
-    }, 100);
   }
 
   getColorByStatus(status: string): string {

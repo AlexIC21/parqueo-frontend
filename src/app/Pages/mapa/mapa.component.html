@@ -73,52 +73,19 @@
           <div class="legend-item"><span class="legend-swatch maintenance"></span>Mantenimiento</div>
         </div>
 
+        @if (spaceUpdateMessage) {
+          <p class="space-message space-message--success">{{ spaceUpdateMessage }}</p>
+        }
+
+        @if (spaceUpdateError) {
+          <p class="space-message space-message--error">{{ spaceUpdateError }}</p>
+        }
+
         @if (selectedSpace && !isGuardia) {
           <article class="selected-space selected-space--info">
             <span>Espacio seleccionado</span>
             <strong>{{ selectedSpace.code }}</strong>
             <p>{{ getVehicleTypeLabel(selectedSpace.vehicleType) }} - {{ getStatusLabel(selectedSpace.status) }}</p>
-          </article>
-        }
-
-        @if (selectedSpace && isGuardia) {
-          <article #statusPanel class="status-panel">
-            <div class="status-panel__header">
-              <div>
-                <h3>Actualizar estado del espacio</h3>
-                <p>Espacio seleccionado: <strong>{{ selectedSpace.code }}</strong></p>
-              </div>
-              <span class="status-pill" [style.background]="getColorByStatus(selectedSpace.status)">
-                {{ getStatusLabel(selectedSpace.status) }}
-              </span>
-            </div>
-
-            <p class="status-panel__meta">
-              Estado actual: <strong>{{ getStatusLabel(selectedSpace.status) }}</strong>
-            </p>
-
-            <div class="guard-actions" aria-label="Actualizar estado del espacio">
-              <button class="guard-action guard-action--free" type="button" (click)="updateSelectedSpaceStatus('LIBRE')" [disabled]="isUpdatingSpace">
-                Libre
-              </button>
-              <button class="guard-action guard-action--occupied" type="button" (click)="updateSelectedSpaceStatus('OCUPADO')" [disabled]="isUpdatingSpace">
-                Ocupado
-              </button>
-              <button class="guard-action guard-action--maintenance" type="button" (click)="updateSelectedSpaceStatus('MANTENIMIENTO')" [disabled]="isUpdatingSpace">
-                Mantenimiento
-              </button>
-              <button type="button" class="guard-action guard-action--neutral" (click)="cancelSpaceSelection()" [disabled]="isUpdatingSpace">
-                Cancelar selección
-              </button>
-            </div>
-
-            @if (spaceUpdateMessage) {
-              <p class="space-message space-message--success">{{ spaceUpdateMessage }}</p>
-            }
-
-            @if (spaceUpdateError) {
-              <p class="space-message space-message--error">{{ spaceUpdateError }}</p>
-            }
           </article>
         }
       }
