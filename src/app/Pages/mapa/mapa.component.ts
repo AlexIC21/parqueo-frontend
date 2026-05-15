@@ -36,8 +36,11 @@ export class MapaComponent implements OnInit, OnDestroy {
   realtimeMessage = '';
   spaceUpdateMessage = '';
   spaceUpdateError = '';
+  staleMapAlertMessage = '';
+  showStaleMapAlert = false;
   isUpdatingSpace = false;
   isPaintingMap = false;
+  private hasShownStaleMapAlert = false;
   private svgReady = false;
   private svgDoc: Document | null = null;
   private svgElementsById = new Map<string, SVGElement>();
@@ -76,7 +79,30 @@ export class MapaComponent implements OnInit, OnDestroy {
   }
 
   get updatedAt(): string {
-    return this.mapData?.updatedAt ?? '';
+    return this.mapData?.lastUpdate?.lastMapUpdateAt ?? this.mapData?.updatedAt ?? '';
+  }
+
+  formatUpdatedAt(date: string | Date | null | undefined): string {
+    if (!date) {
+      return '';
+    }
+
+    let dateValue: string | Date = date;
+
+    if (typeof date === 'string') {
+      const hasTimezone = date.endsWith('Z') || /[+-]\d{2}:\d{2}$/.test(date);
+      dateValue = hasTimezone ? date : `${date}Z`;
+    }
+
+    return new Intl.DateTimeFormat('es-BO', {
+      timeZone: 'America/La_Paz',
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false
+    }).format(new Date(dateValue));
   }
 
   get isGuardia(): boolean {
@@ -132,6 +158,10 @@ export class MapaComponent implements OnInit, OnDestroy {
     this.selectedSpace = null;
     this.spaceUpdateError = '';
     this.spaceUpdateMessage = '';
+  }
+
+  closeStaleMapAlert(): void {
+    this.showStaleMapAlert = false;
   }
 
   getNextStatus(space: ParkingSpace): EditableParkingSpaceStatus {
@@ -232,7 +262,7 @@ export class MapaComponent implements OnInit, OnDestroy {
 
     const cachedResponse = this.mapService.getCachedParkingMap();
     if (cachedResponse) {
-      this.applyMapResponse(cachedResponse);
+      this.applyMapResponse(cachedResponse, false);
       this.isLoading = false;
     }
 
@@ -246,7 +276,7 @@ export class MapaComponent implements OnInit, OnDestroy {
       )
       .subscribe({
         next: (response: ParkingMapResponse) => {
-          this.applyMapResponse(response);
+          this.applyMapResponse(response, true);
         },
         error: (error: HttpErrorResponse) => {
           if (error.status === 401) {
@@ -309,6 +339,7 @@ export class MapaComponent implements OnInit, OnDestroy {
       this.selectedSpace = mergedSpace;
     }
 
+    this.markMapAsRecentlyUpdated();
     this.updateCounters();
     this.updateSpaceColorInSvg(mergedSpace);
   }
@@ -334,13 +365,46 @@ export class MapaComponent implements OnInit, OnDestroy {
     this.updateSpaceColor(space);
   }
 
-  private applyMapResponse(response: ParkingMapResponse): void {
+  private applyMapResponse(response: ParkingMapResponse, shouldCheckStaleAlert = true): void {
     this.mapData = response.data;
     this.infoMessage = this.mapData.spaces?.length
       ? ''
       : 'A\u00fan no hay espacios configurados para pintar';
+    if (shouldCheckStaleAlert) {
+      this.showStaleMapAlertIfNeeded();
+    }
     this.updateCounters();
     this.paintSpaces();
+  }
+
+  private showStaleMapAlertIfNeeded(): void {
+    const lastUpdate = this.mapData?.lastUpdate;
+    if (!lastUpdate?.isStale || this.hasShownStaleMapAlert) {
+      return;
+    }
+
+    const minutes = lastUpdate.minutesSinceLastUpdate;
+    this.staleMapAlertMessage = Number.isFinite(Number(minutes))
+      ? `El mapa no se actualiz\u00f3 hace ${Number(minutes)} minutos.`
+      : 'El mapa a\u00fan no tiene una actualizaci\u00f3n registrada.';
+    this.hasShownStaleMapAlert = true;
+    this.showStaleMapAlert = true;
+  }
+
+  private markMapAsRecentlyUpdated(): void {
+    if (!this.mapData) {
+      return;
+    }
+
+    this.mapData = {
+      ...this.mapData,
+      lastUpdate: {
+        ...(this.mapData.lastUpdate ?? {}),
+        minutesSinceLastUpdate: 0,
+        isStale: false
+      }
+    };
+    this.showStaleMapAlert = false;
   }
 
   private cacheSvgElements(): void {

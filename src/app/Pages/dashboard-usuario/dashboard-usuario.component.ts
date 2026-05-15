@@ -11,6 +11,7 @@ import { IncidentSocketService } from '../../services/incident-socket.service';
 import { NotificationSocketService } from '../../services/notification-socket.service';
 import { NotificationService } from '../../services/notification.service';
 import { ParkingAvailabilityService } from '../../services/parking-availability.service';
+import { ParkingSocketService } from '../../services/parking-socket.service';
 import {
   AlertPreferences,
   UpdateAlertPreferencesRequest
@@ -41,6 +42,7 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
   private incidentResolvedSocketSubscription?: Subscription;
   private incidentCancelledSocketSubscription?: Subscription;
   private notificationSocketSubscription?: Subscription;
+  private parkingSocketSubscription?: Subscription;
   private shownAvailabilityNotificationIds = new Set<number>();
   private readonly dailyFirstClassAlertType = 'DAILY_FIRST_CLASS_ALERT';
   private readonly classScheduleAlertType = 'CLASS_SCHEDULE_ALERT';
@@ -78,6 +80,7 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     private incidentSocketService: IncidentSocketService,
     private notificationSocketService: NotificationSocketService,
     private notificationService: NotificationService,
+    private parkingSocketService: ParkingSocketService,
     private auth: AuthService,
     private router: Router
   ) {}
@@ -99,6 +102,7 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     this.tryLoadUserIncidents();
     this.connectNotificationSocket();
     this.connectIncidentSocket();
+    this.connectParkingSocket();
   }
 
   ngDoCheck(): void {
@@ -112,8 +116,10 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     this.incidentCreatedSocketSubscription?.unsubscribe();
     this.incidentResolvedSocketSubscription?.unsubscribe();
     this.incidentCancelledSocketSubscription?.unsubscribe();
+    this.parkingSocketSubscription?.unsubscribe();
     this.notificationSocketService.disconnect();
     this.incidentSocketService.disconnect();
+    this.parkingSocketService.disconnect();
   }
 
   get autosAvailable(): number {
@@ -122,6 +128,10 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
 
   get motosAvailable(): number {
     return this.availability?.motorcycles.available ?? 0;
+  }
+
+  get availabilityUpdatedAt(): string | null {
+    return this.availability?.lastMapUpdateAt ?? this.availability?.updatedAt ?? null;
   }
 
   get isAuthenticated(): boolean {
@@ -342,6 +352,21 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
         },
         error: () => {
           this.availability = null;
+          this.errorMessage = 'No se pudo cargar la disponibilidad';
+        }
+      });
+  }
+
+  private refreshAvailability(): void {
+    this.availabilityService
+      .getAvailability()
+      .pipe(take(1))
+      .subscribe({
+        next: (response: ParkingAvailabilityResponse) => {
+          this.availability = response.data;
+          this.errorMessage = '';
+        },
+        error: () => {
           this.errorMessage = 'No se pudo cargar la disponibilidad';
         }
       });
@@ -624,6 +649,28 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
       .subscribe((incident) => {
         this.upsertUnreadIncident(incident);
         this.showIncidentSocketNotice('Una incidencia fue cancelada');
+      });
+  }
+
+  private connectParkingSocket(): void {
+    if (this.parkingSocketSubscription) {
+      return;
+    }
+
+    this.parkingSocketSubscription = this.parkingSocketService
+      .onSpaceUpdated()
+      .subscribe((space) => {
+        const backendUpdatedAt = space.lastMapUpdateAt ?? space.updatedAt ?? null;
+
+        if (backendUpdatedAt && this.availability) {
+          this.availability = {
+            ...this.availability,
+            lastMapUpdateAt: backendUpdatedAt
+          };
+          return;
+        }
+
+        this.refreshAvailability();
       });
   }
 

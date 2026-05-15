@@ -19,7 +19,7 @@
         <div>
           <h2>Plano del Parqueo - Vista interactiva en tiempo real</h2>
           @if (updatedAt) {
-            <p>Actualizado: {{ updatedAt | date: 'dd/MM/yyyy HH:mm' }}</p>
+            <p>Actualizado: {{ formatUpdatedAt(updatedAt) }}</p>
           }
         </div>
       </div>
@@ -91,4 +91,14 @@
       }
     </section>
   </main>
+
+  @if (showStaleMapAlert) {
+    <div class="stale-map-backdrop">
+      <section class="stale-map-modal" role="dialog" aria-modal="true" aria-labelledby="staleMapTitle">
+        <h2 id="staleMapTitle">Mapa no actualizado</h2>
+        <p>{{ staleMapAlertMessage }}</p>
+        <button type="button" (click)="closeStaleMapAlert()">Entendido</button>
+      </section>
+    </div>
+  }
 </div>

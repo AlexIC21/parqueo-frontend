@@ -124,6 +124,14 @@
           <span class="stat-number">{{ motosAvailable }}</span>
         </div>
       </div>
+      <p class="availability-updated">
+        Actualizado:
+        @if (availabilityUpdatedAt) {
+          <span>{{ availabilityUpdatedAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+        } @else {
+          <span>Sin registro</span>
+        }
+      </p>
     }
   </section>
 

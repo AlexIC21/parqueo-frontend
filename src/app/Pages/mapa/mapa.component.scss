@@ -31,4 +31,5 @@
 .legend-swatch.available{background:#22c55e}
 .legend-swatch.occupied{background:#ef4444}
 .legend-swatch.maintenance{background:#f59e0b}
+.stale-map-backdrop{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(15,23,42,.52);padding:1rem}.stale-map-modal{width:min(420px,100%);border-radius:18px;background:#fff;box-shadow:0 24px 70px rgba(15,23,42,.28);padding:1.35rem;text-align:center}.stale-map-modal h2{margin:0;color:#0b1633;font-size:1.25rem}.stale-map-modal p{margin:.75rem 0 1.2rem;color:#475569;font-weight:700;line-height:1.45}.stale-map-modal button{min-height:44px;border:0;border-radius:12px;background:#0d47a1;color:#fff;padding:.7rem 1.1rem;font-weight:850}
 @media (max-width:640px){.header-inner{align-items:flex-start;flex-direction:column}.map-content{width:calc(100% - 1rem)}.map-card{padding:1rem}.status-summary,.legend{grid-template-columns:1fr}.parking-map-svg{min-width:680px;min-height:360px}}

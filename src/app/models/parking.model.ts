@@ -16,6 +16,7 @@ export interface ParkingAvailabilityData {
   motorcycles: VehicleAvailability;
   total: TotalAvailability;
   generalStatus: ParkingGeneralStatus;
+  lastMapUpdateAt?: string | null;
   updatedAt: string;
 }
 
@@ -53,7 +54,15 @@ export interface ParkingMapData {
   };
   areas: ParkingArea[];
   spaces: ParkingSpace[];
+  lastUpdate?: ParkingMapLastUpdate | null;
   updatedAt: string;
+}
+
+export interface ParkingMapLastUpdate {
+  lastMapUpdateAt?: string | null;
+  minutesSinceLastUpdate?: number | null;
+  isStale?: boolean;
+  staleThresholdMinutes?: number;
 }
 
 export interface ParkingArea {
@@ -78,6 +87,8 @@ export interface ParkingSpace {
     | 'MANTENIMIENTO'
     | string;
   svgElementId: string;
+  lastMapUpdateAt?: string | null;
+  updatedAt?: string | null;
 }
 
 export type EditableParkingSpaceStatus = 'LIBRE' | 'OCUPADO' | 'MANTENIMIENTO';
