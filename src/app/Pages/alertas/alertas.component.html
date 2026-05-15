@@ -1,0 +1,79 @@
+<div class="alerts-page">
+  <header class="alerts-header">
+    <div class="header-inner">
+      <button class="back-btn" type="button" (click)="goBack()" aria-label="Volver al dashboard">
+        <span aria-hidden="true">&larr;</span>
+        Volver
+      </button>
+      <div>
+        <h1>Alertas</h1>
+        <p>Configura tus avisos antes de llegar al parqueo.</p>
+      </div>
+    </div>
+  </header>
+
+  <main class="alerts-content">
+    <section class="alerts-card">
+      <h2>Configuraci&oacute;n de alertas</h2>
+
+      @if (isLoadingPreferences) {
+        <p class="state-message">Cargando configuraci&oacute;n de alertas...</p>
+      } @else {
+        <p class="help-text">
+          Recibir&aacute;s una alerta antes de cada clase registrada en Mi Horario seg&uacute;n los minutos configurados.
+        </p>
+
+        <div class="settings-grid">
+          <label class="field-group" for="alertsEnabled">
+            <span>Estado de alertas</span>
+            <select id="alertsEnabled" name="alertsEnabled" [(ngModel)]="alertPreferences.enabled" (change)="clearMessages()">
+              <option [ngValue]="true">Activadas</option>
+              <option [ngValue]="false">Desactivadas</option>
+            </select>
+          </label>
+
+          <label class="field-group" for="minutesBefore">
+            <span>Avisar con anticipaci&oacute;n</span>
+            <input
+              id="minutesBefore"
+              name="minutesBefore"
+              type="number"
+              min="1"
+              max="180"
+              step="1"
+              placeholder="10"
+              [(ngModel)]="alertPreferences.minutesBefore"
+              (input)="clearMessages()"
+            />
+          </label>
+
+          <label class="field-group" for="vehicleType">
+            <span>Tipo de veh&iacute;culo</span>
+            <select id="vehicleType" name="vehicleType" [(ngModel)]="alertPreferences.vehicleType" (change)="clearMessages()">
+              <option value="AUTO">Auto</option>
+              <option value="MOTO">Moto</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="actions-row">
+          <button class="save-btn" type="button" (click)="saveAlertPreferences()" [disabled]="isSaving || isLoadingPreferences">
+            @if (isSaving) {
+              <span>Guardando...</span>
+            } @else {
+              <span>Guardar configuraci&oacute;n</span>
+            }
+          </button>
+        </div>
+      }
+
+      @if (successMessage) {
+        <p class="status-message status-message--success">{{ successMessage }}</p>
+      }
+
+      @if (errorMessage) {
+        <p class="status-message status-message--error">{{ errorMessage }}</p>
+      }
+    </section>
+  </main>
+</div>

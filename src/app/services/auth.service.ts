@@ -33,6 +33,12 @@ export interface LoginResponse {
   access_token?: string;
   token?: string;
   user?: RawAuthUser;
+  data?: {
+    accessToken?: string;
+    access_token?: string;
+    token?: string;
+    user?: RawAuthUser;
+  };
 }
 
 export interface RegisterResponse {
@@ -117,8 +123,8 @@ export class AuthService {
     const url = `${this.getApiBase()}/auth/login`;
     return this.http.post<LoginResponse>(url, payload).pipe(
       map((response) => {
-        const user = this.normalizeUser(response.user, payload.email);
-        this.setSession(user, response.accessToken ?? response.access_token ?? response.token ?? '');
+        const user = this.normalizeUser(response.user ?? response.data?.user, payload.email);
+        this.setSession(user, this.extractToken(response));
         return user;
       })
     );
@@ -140,7 +146,12 @@ export class AuthService {
   }
 
   getToken(): string | null {
-    return localStorage.getItem(this.TOKEN_KEY);
+    return (
+      localStorage.getItem(this.TOKEN_KEY) ||
+      localStorage.getItem('accessToken') ||
+      localStorage.getItem('access_token') ||
+      localStorage.getItem('token')
+    );
   }
 
   getCurrentUser(): AuthUser | null {
@@ -157,6 +168,18 @@ export class AuthService {
 
   setToken(token: string): void {
     localStorage.setItem(this.TOKEN_KEY, token);
+  }
+
+  private extractToken(response: LoginResponse): string {
+    return (
+      response.accessToken ??
+      response.access_token ??
+      response.token ??
+      response.data?.accessToken ??
+      response.data?.access_token ??
+      response.data?.token ??
+      ''
+    );
   }
 
   private setSession(user: AuthUser, token: string): void {

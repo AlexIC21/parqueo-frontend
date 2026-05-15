@@ -17,13 +17,14 @@ import { CreateScheduleRequest, MyScheduleResponse, UserClass } from '../../mode
 })
 export class MiHorarioComponent implements OnInit {
   readonly weekDays = [
-    { key: 'MONDAY', value: 1, label: 'Lun' },
-    { key: 'TUESDAY', value: 2, label: 'Mar' },
-    { key: 'WEDNESDAY', value: 3, label: 'Mi\u00e9' },
-    { key: 'THURSDAY', value: 4, label: 'Jue' },
-    { key: 'FRIDAY', value: 5, label: 'Vie' },
-    { key: 'SATURDAY', value: 6, label: 'S\u00e1b' }
+    { key: 'MONDAY', value: 1, label: 'Lun', circleLabel: 'L' },
+    { key: 'TUESDAY', value: 2, label: 'Mar', circleLabel: 'M' },
+    { key: 'WEDNESDAY', value: 3, label: 'Mie', circleLabel: 'M' },
+    { key: 'THURSDAY', value: 4, label: 'Jue', circleLabel: 'J' },
+    { key: 'FRIDAY', value: 5, label: 'Vie', circleLabel: 'V' },
+    { key: 'SATURDAY', value: 6, label: 'Sab', circleLabel: 'S' }
   ];
+  readonly activePeriod = '1-2026';
 
   newClass = this.createEmptyClassForm();
   classes: UserClass[] = [];
@@ -36,6 +37,7 @@ export class MiHorarioComponent implements OnInit {
   expandedClassId: number | null = null;
   editingClassId: number | null = null;
   classPendingDelete: UserClass | null = null;
+  selectedDayKey = 'MONDAY';
 
   constructor(
     private scheduleService: ScheduleService,
@@ -83,7 +85,22 @@ export class MiHorarioComponent implements OnInit {
 
   getClassesForDay(day: string | number): UserClass[] {
     const dayNumber = this.getDayNumber(day);
-    return this.classes.filter((item) => this.getDayNumber(item.dayOfWeek) === dayNumber);
+    return this.classes
+      .filter((item) => this.getDayNumber(item.dayOfWeek) === dayNumber)
+      .sort((a, b) => a.startTime.localeCompare(b.startTime));
+  }
+
+  get selectedDayLabel(): string {
+    return this.formatDay(this.selectedDayKey);
+  }
+
+  get selectedDayClasses(): UserClass[] {
+    return this.getClassesForDay(this.selectedDayKey);
+  }
+
+  selectDay(dayKey: string): void {
+    this.selectedDayKey = dayKey;
+    this.expandedClassId = null;
   }
 
   addClass(): void {

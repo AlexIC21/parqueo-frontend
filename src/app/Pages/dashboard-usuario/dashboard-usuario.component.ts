@@ -21,7 +21,7 @@ import {
   ParkingGeneralStatus
 } from '../../models/parking.model';
 import {
-  DailyFirstClassAlertData,
+  ClassScheduleAlertData,
   UserNotification
 } from '../../models/notification.model';
 import { Incident } from '../../models/incident.model';
@@ -44,6 +44,7 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
   private notificationSocketSubscription?: Subscription;
   private shownAvailabilityNotificationIds = new Set<number>();
   private readonly dailyFirstClassAlertType = 'DAILY_FIRST_CLASS_ALERT';
+  private readonly classScheduleAlertType = 'CLASS_SCHEDULE_ALERT';
 
   availability: ParkingAvailabilityData | null = null;
   isLoading = true;
@@ -53,7 +54,8 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     enabled: true,
     minutesBefore: 30,
     vehicleType: 'AUTO',
-    onlyFirstClassPerDay: true
+    onlyFirstClassPerDay: false,
+    selectedScheduleAlerts: []
   };
   isLoadingAlertPreferences = false;
   isSavingAlertPreferences = false;
@@ -230,8 +232,8 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     return !role || role === 'USUARIO';
   }
 
-  get dailyAlertData(): DailyFirstClassAlertData | null {
-    return this.isDailyFirstClassAlertData(this.dailyFirstClassAlert?.data)
+  get dailyAlertData(): ClassScheduleAlertData | null {
+    return this.isClassScheduleAlertData(this.dailyFirstClassAlert?.data)
       ? this.dailyFirstClassAlert.data
       : null;
   }
@@ -275,21 +277,28 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   goToMap(): void {
-    if (this.isAuthenticated) {
-      this.router.navigate(['/mapa']);
-      return;
-    }
-
-    this.router.navigate(['/login']);
+    this.goToProtectedRoute('/mapa');
   }
 
   goToSchedule(): void {
-    if (this.isAuthenticated) {
-      this.router.navigate(['/mi-horario']);
+    this.goToProtectedRoute('/horario');
+  }
+
+  goToAlerts(): void {
+    this.goToProtectedRoute('/alertas');
+  }
+
+  goToProtectedRoute(route: string): void {
+    if (!this.auth.isAuthenticated()) {
+      this.showLoginRequiredModal(route);
       return;
     }
 
-    this.router.navigate(['/login']);
+    this.router.navigate([route]);
+  }
+
+  showLoginRequiredModal(_route: string): void {
+    this.showGuestModal = true;
   }
 
   goToLogin(): void {
@@ -489,13 +498,13 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
       .subscribe({
         next: (response) => {
           const notifications = response.data ?? [];
-          const unreadDailyFirstClassAlerts = notifications.filter((notification) =>
-            notification.type === this.dailyFirstClassAlertType &&
+          const unreadAvailabilityAlerts = notifications.filter((notification) =>
+            this.isAvailabilityAlertType(notification.type) &&
             !notification.readAt
           ).length;
           console.log(`[HU22-FE][NOTIFICATIONS] total=${notifications.length}`);
-          console.log(`[HU22-FE][NOTIFICATIONS] unreadDailyFirstClassAlerts=${unreadDailyFirstClassAlerts}`);
-          const notification = this.findUnreadDailyFirstClassAlert(notifications);
+          console.log(`[HU22-FE][NOTIFICATIONS] unreadAvailabilityAlerts=${unreadAvailabilityAlerts}`);
+          const notification = this.findUnreadAvailabilityAlert(notifications);
           if (notification) {
             this.showAvailabilityAlertModal(notification);
           }
@@ -576,8 +585,7 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     const isValid =
       this.isValidReminderMinutes(minutesBefore) &&
       (this.alertPreferences.vehicleType === 'AUTO' || this.alertPreferences.vehicleType === 'MOTO') &&
-      typeof this.alertPreferences.enabled === 'boolean' &&
-      typeof this.alertPreferences.onlyFirstClassPerDay === 'boolean';
+      typeof this.alertPreferences.enabled === 'boolean';
 
     if (showError) {
       this.alertPreferencesError = isValid
@@ -597,7 +605,8 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
       enabled: preferences.enabled,
       minutesBefore: preferences.minutesBefore,
       vehicleType: preferences.vehicleType,
-      onlyFirstClassPerDay: preferences.onlyFirstClassPerDay
+      onlyFirstClassPerDay: false,
+      selectedScheduleAlerts: []
     };
   }
 
@@ -606,7 +615,8 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
       enabled: this.alertPreferences.enabled,
       minutesBefore: Number(this.alertPreferences.minutesBefore),
       vehicleType: this.alertPreferences.vehicleType,
-      onlyFirstClassPerDay: this.alertPreferences.onlyFirstClassPerDay
+      onlyFirstClassPerDay: false,
+      selectedScheduleAlerts: []
     };
   }
 
@@ -623,15 +633,15 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     }, 3500);
   }
 
-  private findUnreadDailyFirstClassAlert(notifications: UserNotification[]): UserNotification | null {
+  private findUnreadAvailabilityAlert(notifications: UserNotification[]): UserNotification | null {
     return notifications
-      .filter((notification) => this.shouldShowDailyFirstClassAlert(notification))
+      .filter((notification) => this.shouldShowAvailabilityAlert(notification))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null;
   }
 
-  private shouldShowDailyFirstClassAlert(notification: UserNotification): boolean {
+  private shouldShowAvailabilityAlert(notification: UserNotification): boolean {
     const show =
-      notification.type === this.dailyFirstClassAlertType &&
+      this.isAvailabilityAlertType(notification.type) &&
       !notification.readAt &&
       !this.shownAvailabilityNotificationIds.has(notification.id);
     console.log(`[HU22-FE][FILTER] notificationId=${notification.id} type=${notification.type} readAt=${notification.readAt ?? 'null'} show=${show}`);
@@ -646,7 +656,7 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     this.notificationSocketSubscription = this.notificationSocketService
       .onNotificationCreated()
       .subscribe((notification) => {
-        if (this.shouldShowDailyFirstClassAlert(notification)) {
+        if (this.shouldShowAvailabilityAlert(notification)) {
           console.log('[HU22-FE][SOCKET] alerta HU22 recibida. Mostrando alerta.');
           this.showAvailabilityAlertModal(notification);
         }
@@ -791,10 +801,14 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   private getAvailableSpaces(notification: UserNotification): number {
-    const data = this.isDailyFirstClassAlertData(notification.data)
+    const data = this.isClassScheduleAlertData(notification.data)
       ? notification.data
       : null;
-    const available = data?.availability?.cars?.available ?? 0;
+    const vehicleType = String(data?.vehicleType ?? this.alertPreferences.vehicleType).toUpperCase();
+    const availability = vehicleType === 'MOTO'
+      ? data?.availability?.motorcycles
+      : data?.availability?.cars;
+    const available = availability?.available ?? 0;
     return Number.isFinite(Number(available)) ? Number(available) : 0;
   }
 
@@ -805,7 +819,11 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
       : message || error.message || 'Sin mensaje';
   }
 
-  private isDailyFirstClassAlertData(data: UserNotification['data']): data is DailyFirstClassAlertData {
+  private isAvailabilityAlertType(type: string): boolean {
+    return type === this.dailyFirstClassAlertType || type === this.classScheduleAlertType;
+  }
+
+  private isClassScheduleAlertData(data: UserNotification['data']): data is ClassScheduleAlertData {
     return !!data && typeof data === 'object';
   }
 }

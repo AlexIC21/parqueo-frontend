@@ -9,7 +9,8 @@ export interface AlertPreferences {
   enabled: boolean;
   minutesBefore: number;
   vehicleType: 'AUTO' | 'MOTO';
-  onlyFirstClassPerDay: boolean;
+  onlyFirstClassPerDay?: boolean;
+  selectedScheduleAlerts?: SelectedScheduleAlert[];
 }
 
 export interface UpdateAlertPreferencesRequest {
@@ -17,4 +18,10 @@ export interface UpdateAlertPreferencesRequest {
   minutesBefore: number;
   vehicleType: 'AUTO' | 'MOTO';
   onlyFirstClassPerDay: boolean;
+  selectedScheduleAlerts?: SelectedScheduleAlert[];
+}
+
+export interface SelectedScheduleAlert {
+  scheduleId: number;
+  enabled: boolean;
 }

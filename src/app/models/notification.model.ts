@@ -15,17 +15,18 @@ export interface UserNotification {
   type: string;
   title: string;
   message: string;
-  data?: DailyFirstClassAlertData | Record<string, unknown> | null;
+  data?: ClassScheduleAlertData | Record<string, unknown> | null;
   readAt: string | null;
   createdAt: string;
 }
 
-export interface DailyFirstClassAlertData {
+export interface ClassScheduleAlertData {
   class?: {
     subject?: string;
     startTime?: string;
     classroom?: string;
   };
+  vehicleType?: 'AUTO' | 'MOTO' | string;
   availability?: {
     cars?: {
       available?: number;

@@ -7,16 +7,34 @@
       </button>
 
       <div class="header-text">
-        <h1>Mi Horario de Clases</h1>
-        <p>Gestiona tu horario acad&eacute;mico</p>
+        <h1>Mi Horario</h1>
+        <p>Gestiona tu horario academico</p>
       </div>
     </div>
   </header>
 
   <main class="schedule-content">
+    <section class="period-panel" aria-label="Periodo activo">
+      <button class="period-pill" type="button">PERIODO {{ activePeriod }}</button>
+      <h2>PERIODO ACTIVO {{ activePeriod }}</h2>
+      <div class="day-selector" aria-label="Seleccionar dia">
+        @for (day of weekDays; track day.key) {
+          <button
+            class="day-circle"
+            type="button"
+            [class.day-circle--active]="selectedDayKey === day.key"
+            (click)="selectDay(day.key)"
+            [attr.aria-label]="formatDay(day.key)"
+          >
+            {{ day.circleLabel }}
+          </button>
+        }
+      </div>
+    </section>
+
     <section class="schedule-card add-class-card" aria-labelledby="add-class-title">
       <div class="card-heading">
-        <h2 id="add-class-title">{{ editingClassId ? 'Editar clase' : 'Agregar Nueva Clase' }}</h2>
+        <h2 id="add-class-title">{{ editingClassId ? 'Editar clase' : 'Agregar clase' }}</h2>
         <p>{{ editingClassId ? 'Modifica los datos de la clase seleccionada.' : 'Completa los datos principales de tu materia.' }}</p>
       </div>
 
@@ -30,7 +48,7 @@
 
       <form class="class-form" (ngSubmit)="addClass()">
         <label class="field-group" for="day">
-          <span>D&iacute;a</span>
+          <span>Dia</span>
           <select id="day" name="day" [(ngModel)]="newClass.dayOfWeek">
             <option value="">Seleccionar</option>
             @for (day of weekDays; track day.key) {
@@ -51,7 +69,7 @@
 
         <label class="field-group" for="subject">
           <span>Materia</span>
-          <input id="subject" name="subject" type="text" placeholder="Ej. C&aacute;lculo I" [(ngModel)]="newClass.subject" />
+          <input id="subject" name="subject" type="text" placeholder="Ej. Calculo I" [(ngModel)]="newClass.subject" />
         </label>
 
         <label class="field-group" for="classroom">
@@ -60,21 +78,21 @@
         </label>
 
         <button class="submit-btn" type="submit" [disabled]="isSaving">
-          {{ isSaving ? 'Guardando...' : (editingClassId ? 'Guardar cambios' : '+ Agregar Clase') }}
+          {{ isSaving ? 'Guardando...' : (editingClassId ? 'Guardar cambios' : '+ Agregar clase') }}
         </button>
 
         @if (editingClassId) {
           <button class="cancel-edit-btn" type="button" (click)="cancelEditing()" [disabled]="isSaving">
-            Cancelar edición
+            Cancelar edicion
           </button>
         }
       </form>
     </section>
 
-    <section class="schedule-card weekly-card" aria-labelledby="weekly-title">
+    <section class="schedule-card day-card" aria-labelledby="day-title">
       <div class="card-heading">
-        <h2 id="weekly-title">Horario Semanal</h2>
-        <p>Vista organizada por d&iacute;a.</p>
+        <h2 id="day-title">{{ selectedDayLabel }}</h2>
+        <p>Clases del dia seleccionado.</p>
       </div>
 
       @if (isLoading) {
@@ -82,52 +100,45 @@
       } @else if (errorMessage) {
         <p class="state-message state-message--error">{{ errorMessage }}</p>
       } @else {
-        <div class="week-grid">
-          @for (day of weekDays; track day.key) {
-            <article class="day-column">
-              <h3>{{ day.label }}</h3>
+        @if (selectedDayClasses.length) {
+          <div class="class-list">
+            @for (item of selectedDayClasses; track item.id) {
+              <article
+                class="class-row"
+                role="button"
+                tabindex="0"
+                (click)="toggleClassDetails(item)"
+                (keydown.enter)="toggleClassDetails(item)"
+                (keydown.space)="toggleClassDetails(item)"
+                [class.class-row--expanded]="expandedClassId === item.id"
+              >
+                <div class="class-row-time">{{ item.startTime }} - {{ item.endTime }}</div>
+                <div class="class-row-detail">
+                  <strong>{{ item.subject }}</strong>
+                  @if (item.classroom) {
+                    <span>Aula: {{ item.classroom }}</span>
+                  }
+                  @if (item.teacher) {
+                    <span>Docente: {{ item.teacher }}</span>
+                  }
 
-              <div class="day-body">
-                @if (getClassesForDay(day.key).length) {
-                  @for (item of getClassesForDay(day.key); track item.id) {
-                    <div
-                      class="class-item"
-                      role="button"
-                      tabindex="0"
-                      (click)="toggleClassDetails(item)"
-                      (keydown.enter)="toggleClassDetails(item)"
-                      (keydown.space)="toggleClassDetails(item)"
-                      [class.class-item--expanded]="expandedClassId === item.id"
-                    >
-                      <strong>{{ item.subject }}</strong>
-                      <span class="class-time">{{ item.startTime }} - {{ item.endTime }}</span>
-
-                      @if (expandedClassId === item.id) {
-                        @if (item.classroom) {
-                          <span class="class-meta">Aula: {{ item.classroom }}</span>
-                        }
-                        @if (item.teacher) {
-                          <span class="class-meta">{{ item.teacher }}</span>
-                        }
-
-                        <span class="class-actions">
-                          <button class="class-action class-action--edit" type="button" (click)="startEditingClass(item, $event)">
-                            Editar
-                          </button>
-                          <button class="class-action class-action--delete" type="button" (click)="confirmDeleteClass(item, $event)">
-                            Eliminar
-                          </button>
-                        </span>
-                      }
+                  @if (expandedClassId === item.id) {
+                    <div class="class-actions">
+                      <button class="class-action class-action--edit" type="button" (click)="startEditingClass(item, $event)">
+                        Editar
+                      </button>
+                      <button class="class-action class-action--delete" type="button" (click)="confirmDeleteClass(item, $event)">
+                        Eliminar
+                      </button>
                     </div>
                   }
-                } @else {
-                  <p class="empty-day">Sin clases</p>
-                }
-              </div>
-            </article>
-          }
-        </div>
+                </div>
+              </article>
+            }
+          </div>
+        } @else {
+          <p class="empty-day">Sin clases</p>
+        }
 
         @if (emptyMessage) {
           <p class="state-message state-message--empty">{{ emptyMessage }}</p>
@@ -140,7 +151,7 @@
     <div class="confirm-backdrop" (click)="cancelDeleteClass()">
       <section class="confirm-card" (click)="$event.stopPropagation()">
         <h2>Eliminar clase</h2>
-        <p>¿Seguro que deseas eliminar esta clase de tu horario?</p>
+        <p>Seguro que deseas eliminar esta clase de tu horario?</p>
         <div class="confirm-actions">
           <button class="confirm-btn confirm-btn--cancel" type="button" (click)="cancelDeleteClass()" [disabled]="isSaving">
             Cancelar

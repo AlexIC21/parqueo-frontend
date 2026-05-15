@@ -61,6 +61,13 @@ export const routes: Routes = [
       import('./Pages/mi-horario/mi-horario.component').then(m => m.MiHorarioComponent)
   },
   {
+    path: 'alertas',
+    canActivate: [authGuard, roleGuard],
+    data: { roles: ['USUARIO'] },
+    loadComponent: () =>
+      import('./Pages/alertas/alertas.component').then(m => m.AlertasComponent)
+  },
+  {
     path: 'horario',
     redirectTo: 'mi-horario',
     pathMatch: 'full'
