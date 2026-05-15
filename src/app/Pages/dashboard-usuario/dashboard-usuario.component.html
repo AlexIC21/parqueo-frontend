@@ -175,6 +175,34 @@
     </section>
   }
 
+  @if (dailyFirstClassAlert && canShowAlertPreferences) {
+    <div class="availability-modal-backdrop">
+      <section class="availability-modal">
+        <span
+          class="availability-modal-icon"
+          [class.availability-modal-icon--full]="!hasAvailableSpaces(dailyFirstClassAlert)">
+        </span>
+        <h2>Disponibilidad del parqueo</h2>
+        <p
+          class="availability-message"
+          [class.availability-message--available]="hasAvailableSpaces(dailyFirstClassAlert)"
+          [class.availability-message--full]="!hasAvailableSpaces(dailyFirstClassAlert)">
+          {{ getAvailabilityAlertMessage(dailyFirstClassAlert) }}
+        </p>
+        <button
+          class="availability-modal-btn"
+          type="button"
+          (click)="acknowledgeAvailabilityAlert()"
+          [disabled]="isMarkingNotificationRead">
+          {{ isMarkingNotificationRead ? 'Marcando...' : 'Entendido' }}
+        </button>
+        @if (notificationError) {
+          <p class="availability-modal-error">{{ notificationError }}</p>
+        }
+      </section>
+    </div>
+  }
+
 </div><!-- /page-wrapper -->
 
 <!-- Modal: acceso restringido a invitados -->

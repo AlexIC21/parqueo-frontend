@@ -16,8 +16,8 @@
   <main class="schedule-content">
     <section class="schedule-card add-class-card" aria-labelledby="add-class-title">
       <div class="card-heading">
-        <h2 id="add-class-title">Agregar Nueva Clase</h2>
-        <p>Completa los datos principales de tu materia.</p>
+        <h2 id="add-class-title">{{ editingClassId ? 'Editar clase' : 'Agregar Nueva Clase' }}</h2>
+        <p>{{ editingClassId ? 'Modifica los datos de la clase seleccionada.' : 'Completa los datos principales de tu materia.' }}</p>
       </div>
 
       @if (formMessage) {
@@ -60,8 +60,14 @@
         </label>
 
         <button class="submit-btn" type="submit" [disabled]="isSaving">
-          {{ isSaving ? 'Agregando...' : '+ Agregar Clase' }}
+          {{ isSaving ? 'Guardando...' : (editingClassId ? 'Guardar cambios' : '+ Agregar Clase') }}
         </button>
+
+        @if (editingClassId) {
+          <button class="cancel-edit-btn" type="button" (click)="cancelEditing()" [disabled]="isSaving">
+            Cancelar edición
+          </button>
+        }
       </form>
     </section>
 
@@ -84,14 +90,34 @@
               <div class="day-body">
                 @if (getClassesForDay(day.key).length) {
                   @for (item of getClassesForDay(day.key); track item.id) {
-                    <div class="class-item">
+                    <div
+                      class="class-item"
+                      role="button"
+                      tabindex="0"
+                      (click)="toggleClassDetails(item)"
+                      (keydown.enter)="toggleClassDetails(item)"
+                      (keydown.space)="toggleClassDetails(item)"
+                      [class.class-item--expanded]="expandedClassId === item.id"
+                    >
                       <strong>{{ item.subject }}</strong>
                       <span class="class-time">{{ item.startTime }} - {{ item.endTime }}</span>
-                      @if (item.classroom) {
-                        <span class="class-meta">Aula {{ item.classroom }}</span>
-                      }
-                      @if (item.teacher) {
-                        <span class="class-meta">{{ item.teacher }}</span>
+
+                      @if (expandedClassId === item.id) {
+                        @if (item.classroom) {
+                          <span class="class-meta">Aula: {{ item.classroom }}</span>
+                        }
+                        @if (item.teacher) {
+                          <span class="class-meta">{{ item.teacher }}</span>
+                        }
+
+                        <span class="class-actions">
+                          <button class="class-action class-action--edit" type="button" (click)="startEditingClass(item, $event)">
+                            Editar
+                          </button>
+                          <button class="class-action class-action--delete" type="button" (click)="confirmDeleteClass(item, $event)">
+                            Eliminar
+                          </button>
+                        </span>
                       }
                     </div>
                   }
@@ -109,4 +135,21 @@
       }
     </section>
   </main>
+
+  @if (classPendingDelete) {
+    <div class="confirm-backdrop" (click)="cancelDeleteClass()">
+      <section class="confirm-card" (click)="$event.stopPropagation()">
+        <h2>Eliminar clase</h2>
+        <p>¿Seguro que deseas eliminar esta clase de tu horario?</p>
+        <div class="confirm-actions">
+          <button class="confirm-btn confirm-btn--cancel" type="button" (click)="cancelDeleteClass()" [disabled]="isSaving">
+            Cancelar
+          </button>
+          <button class="confirm-btn confirm-btn--delete" type="button" (click)="deleteClass()" [disabled]="isSaving">
+            {{ isSaving ? 'Eliminando...' : 'Eliminar' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  }
 </div>

@@ -22,8 +22,7 @@ export class MiHorarioComponent implements OnInit {
     { key: 'WEDNESDAY', value: 3, label: 'Mi\u00e9' },
     { key: 'THURSDAY', value: 4, label: 'Jue' },
     { key: 'FRIDAY', value: 5, label: 'Vie' },
-    { key: 'SATURDAY', value: 6, label: 'S\u00e1b' },
-    { key: 'SUNDAY', value: 7, label: 'Dom' }
+    { key: 'SATURDAY', value: 6, label: 'S\u00e1b' }
   ];
 
   newClass = this.createEmptyClassForm();
@@ -34,6 +33,9 @@ export class MiHorarioComponent implements OnInit {
   emptyMessage = '';
   formMessage = '';
   formErrorMessage = '';
+  expandedClassId: number | null = null;
+  editingClassId: number | null = null;
+  classPendingDelete: UserClass | null = null;
 
   constructor(
     private scheduleService: ScheduleService,
@@ -74,9 +76,6 @@ export class MiHorarioComponent implements OnInit {
       case 6:
       case 'SATURDAY':
         return 'S\u00e1bado';
-      case 7:
-      case 'SUNDAY':
-        return 'Domingo';
       default:
         return String(day);
     }
@@ -110,8 +109,11 @@ export class MiHorarioComponent implements OnInit {
     };
 
     this.isSaving = true;
-    this.scheduleService
-      .createMySchedule(payload)
+    const request$ = this.editingClassId
+      ? this.scheduleService.updateClass(this.editingClassId, payload)
+      : this.scheduleService.createMySchedule(payload);
+
+    request$
       .pipe(
         take(1),
         finalize(() => {
@@ -120,18 +122,97 @@ export class MiHorarioComponent implements OnInit {
       )
       .subscribe({
         next: () => {
-          this.formMessage = 'Clase agregada correctamente';
+          this.formMessage = this.editingClassId
+            ? 'Clase actualizada correctamente'
+            : 'Clase agregada correctamente';
           this.resetForm();
+          this.editingClassId = null;
+          this.expandedClassId = null;
           this.loadSchedule();
         },
         error: (error: HttpErrorResponse) => {
           if (error.status === 401) {
-            this.formErrorMessage = 'Debes iniciar sesi\u00f3n para agregar clases';
+            this.formErrorMessage = 'Debes iniciar sesi\u00f3n para gestionar clases';
             this.router.navigate(['/login']);
             return;
           }
 
           this.formErrorMessage = this.getErrorMessage(error);
+        }
+      });
+  }
+
+  toggleClassDetails(item: UserClass): void {
+    this.expandedClassId = this.expandedClassId === item.id ? null : item.id;
+  }
+
+  startEditingClass(item: UserClass, event?: Event): void {
+    event?.stopPropagation();
+    this.editingClassId = item.id;
+    this.expandedClassId = item.id;
+    this.formMessage = '';
+    this.formErrorMessage = '';
+    this.newClass = {
+      dayOfWeek: String(this.getDayNumber(item.dayOfWeek)),
+      startTime: this.normalizeTimeForInput(item.startTime),
+      endTime: this.normalizeTimeForInput(item.endTime),
+      subject: item.subject,
+      classroom: item.classroom ?? ''
+    };
+  }
+
+  cancelEditing(): void {
+    this.editingClassId = null;
+    this.formErrorMessage = '';
+    this.resetForm();
+  }
+
+  confirmDeleteClass(item: UserClass, event?: Event): void {
+    event?.stopPropagation();
+    this.classPendingDelete = item;
+  }
+
+  cancelDeleteClass(): void {
+    this.classPendingDelete = null;
+  }
+
+  deleteClass(): void {
+    const item = this.classPendingDelete;
+
+    if (!item) {
+      return;
+    }
+
+    this.formMessage = '';
+    this.formErrorMessage = '';
+    this.isSaving = true;
+
+    this.scheduleService
+      .deleteClass(item.id)
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isSaving = false;
+        })
+      )
+      .subscribe({
+        next: () => {
+          this.formMessage = 'Clase eliminada correctamente';
+          if (this.editingClassId === item.id) {
+            this.cancelEditing();
+          }
+          this.expandedClassId = null;
+          this.classPendingDelete = null;
+          this.loadSchedule();
+        },
+        error: (error: HttpErrorResponse) => {
+          if (error.status === 401) {
+            this.formErrorMessage = 'Debes iniciar sesión para gestionar clases';
+            this.router.navigate(['/login']);
+            return;
+          }
+
+          this.formErrorMessage = this.getErrorMessage(error, 'No se pudo eliminar la clase');
         }
       });
   }
@@ -191,20 +272,24 @@ export class MiHorarioComponent implements OnInit {
     }
 
     const parsedDay = Number(day);
-    if (!Number.isNaN(parsedDay) && parsedDay >= 1 && parsedDay <= 7) {
+    if (!Number.isNaN(parsedDay) && parsedDay >= 1 && parsedDay <= 6) {
       return parsedDay;
     }
 
     return this.weekDays.find((item) => item.key === day)?.value ?? 0;
   }
 
-  private getErrorMessage(error: HttpErrorResponse): string {
+  private normalizeTimeForInput(time: string): string {
+    return time?.slice(0, 5) ?? '';
+  }
+
+  private getErrorMessage(error: HttpErrorResponse, fallback = 'No se pudo guardar la clase'): string {
     const message = error.error?.message;
     if (Array.isArray(message)) {
       return message.join(', ');
     }
 
-    return message || 'No se pudo agregar la clase';
+    return message || fallback;
   }
 
   private loadSchedule(): void {

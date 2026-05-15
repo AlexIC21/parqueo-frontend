@@ -75,3 +75,5 @@ input, select {
 @keyframes app-spin {
   to { transform: rotate(360deg); }
 }
+
+.availability-modal-backdrop{position:fixed;inset:0;background:rgba(11,31,77,.55);display:grid;place-items:center;z-index:50;padding:1rem}.availability-modal{width:min(360px,100%);background:#fff;border-radius:22px;box-shadow:var(--shadow-card);padding:1.6rem;text-align:center}.availability-modal-icon{display:block;width:44px;height:44px;border-radius:50%;background:#22c55e;margin:0 auto .8rem}.availability-modal-icon--full{background:#ef4444}.availability-modal h2{margin:0 0 .75rem}.availability-message{margin:0 0 1rem;font-size:1.25rem;font-weight:900}.availability-message--available{color:#16a34a}.availability-message--full,.availability-modal-error{color:#ef4444}.availability-modal-btn{min-height:46px;border:0;border-radius:12px;background:#0d47a1;color:#fff;padding:.75rem 1.3rem;font-weight:850}

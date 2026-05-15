@@ -25,6 +25,10 @@ export class ScheduleService {
   }
 
   createMySchedule(payload: CreateScheduleRequest): Observable<MyScheduleResponse> {
+    return this.createClass(payload);
+  }
+
+  createClass(payload: CreateScheduleRequest): Observable<MyScheduleResponse> {
     const token = this.auth.getToken();
     const headers = token
       ? new HttpHeaders({ Authorization: `Bearer ${token}` })
@@ -33,6 +37,31 @@ export class ScheduleService {
     return this.http.post<MyScheduleResponse>(
       `${environment.apiUrl}/users/me/schedule`,
       payload,
+      { headers }
+    );
+  }
+
+  updateClass(classId: number, payload: CreateScheduleRequest): Observable<MyScheduleResponse> {
+    const token = this.auth.getToken();
+    const headers = token
+      ? new HttpHeaders({ Authorization: `Bearer ${token}` })
+      : new HttpHeaders();
+
+    return this.http.put<MyScheduleResponse>(
+      `${environment.apiUrl}/users/me/schedule/${classId}`,
+      payload,
+      { headers }
+    );
+  }
+
+  deleteClass(classId: number): Observable<MyScheduleResponse> {
+    const token = this.auth.getToken();
+    const headers = token
+      ? new HttpHeaders({ Authorization: `Bearer ${token}` })
+      : new HttpHeaders();
+
+    return this.http.delete<MyScheduleResponse>(
+      `${environment.apiUrl}/users/me/schedule/${classId}`,
       { headers }
     );
   }

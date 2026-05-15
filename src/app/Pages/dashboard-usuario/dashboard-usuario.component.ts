@@ -1,11 +1,13 @@
-import { Component, DoCheck, OnInit } from '@angular/core';
+import { Component, DoCheck, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { finalize, take } from 'rxjs';
+import { finalize, Subscription, take } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { AlertPreferencesService } from '../../services/alert-preferences.service';
+import { NotificationSocketService } from '../../services/notification-socket.service';
+import { NotificationService } from '../../services/notification.service';
 import { ParkingAvailabilityService } from '../../services/parking-availability.service';
 import {
   AlertPreferences,
@@ -16,6 +18,10 @@ import {
   ParkingAvailabilityResponse,
   ParkingGeneralStatus
 } from '../../models/parking.model';
+import {
+  DailyFirstClassAlertData,
+  UserNotification
+} from '../../models/notification.model';
 
 @Component({
   selector: 'app-dashboard-usuario',
@@ -24,9 +30,13 @@ import {
   templateUrl: './dashboard-usuario.component.html',
   styleUrls: ['./dashboard-usuario.component.scss']
 })
-export class DashboardUsuarioComponent implements OnInit, DoCheck {
+export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
   private alertPreferencesMessageTimer: ReturnType<typeof setTimeout> | null = null;
   private hasRequestedAlertPreferences = false;
+  private hasRequestedNotifications = false;
+  private notificationSocketSubscription?: Subscription;
+  private shownAvailabilityNotificationIds = new Set<number>();
+  private readonly dailyFirstClassAlertType = 'DAILY_FIRST_CLASS_ALERT';
 
   availability: ParkingAvailabilityData | null = null;
   isLoading = true;
@@ -42,15 +52,26 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck {
   isSavingAlertPreferences = false;
   alertPreferencesError = '';
   alertPreferencesMessage = '';
+  dailyFirstClassAlert: UserNotification | null = null;
+  isLoadingNotifications = false;
+  isMarkingNotificationRead = false;
+  notificationError = '';
 
   constructor(
     private availabilityService: ParkingAvailabilityService,
     private alertPreferencesService: AlertPreferencesService,
+    private notificationSocketService: NotificationSocketService,
+    private notificationService: NotificationService,
     private auth: AuthService,
     private router: Router
   ) {}
 
   ngOnInit(): void {
+    const userRole = this.auth.getUserRole();
+    console.log('[HU22-FE][DASHBOARD] cargando dashboard usuario');
+    console.log(`[HU22-FE][DASHBOARD] userRole=${userRole ?? 'null'}`);
+    console.log(`[HU22-FE][DASHBOARD] tokenExists=${!!this.auth.getToken()}`);
+
     if (this.auth.isAuthenticated() && this.auth.currentUser?.role?.trim().toUpperCase() === 'GUARDIA') {
       this.router.navigate(['/dashboard-guardia']);
       return;
@@ -58,10 +79,18 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck {
 
     this.loadAvailability();
     this.tryLoadAlertPreferences();
+    this.tryLoadNotifications();
+    this.connectNotificationSocket();
   }
 
   ngDoCheck(): void {
     this.tryLoadAlertPreferences();
+    this.tryLoadNotifications();
+  }
+
+  ngOnDestroy(): void {
+    this.notificationSocketSubscription?.unsubscribe();
+    this.notificationSocketService.disconnect();
   }
 
   get autosAvailable(): number {
@@ -179,6 +208,41 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck {
     return !role || role === 'USUARIO';
   }
 
+  get dailyAlertData(): DailyFirstClassAlertData | null {
+    return this.isDailyFirstClassAlertData(this.dailyFirstClassAlert?.data)
+      ? this.dailyFirstClassAlert.data
+      : null;
+  }
+
+  get dailyAlertSubject(): string {
+    return this.dailyAlertData?.class?.subject ?? 'tu primera materia';
+  }
+
+  get dailyAlertStartTime(): string {
+    return this.dailyAlertData?.class?.startTime ?? '';
+  }
+
+  get dailyAlertCarsAvailability(): string {
+    const cars = this.dailyAlertData?.availability?.cars;
+    return `${cars?.available ?? 0}/${cars?.totalCapacity ?? 0}`;
+  }
+
+  get dailyAlertMotorcyclesAvailability(): string {
+    const motorcycles = this.dailyAlertData?.availability?.motorcycles;
+    return `${motorcycles?.available ?? 0}/${motorcycles?.totalCapacity ?? 0}`;
+  }
+
+  getAvailabilityAlertMessage(notification: UserNotification): string {
+    const available = this.getAvailableSpaces(notification);
+    return available > 0
+      ? `Quedan ${available} espacios disponibles.`
+      : 'Ya no quedan espacios disponibles.';
+  }
+
+  hasAvailableSpaces(notification: UserNotification): boolean {
+    return this.getAvailableSpaces(notification) > 0;
+  }
+
   onNavbarAction(): void {
     if (this.isAuthenticated) {
       this.auth.logout();
@@ -220,6 +284,43 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck {
     this.alertPreferencesMessage = '';
   }
 
+  acknowledgeAvailabilityAlert(): void {
+    if (!this.dailyFirstClassAlert || this.isMarkingNotificationRead) {
+      return;
+    }
+
+    const notificationId = this.dailyFirstClassAlert.id;
+    this.dailyFirstClassAlert = null;
+    this.markNotificationAsRead(notificationId);
+  }
+
+  markDailyAlertAsRead(): void {
+    this.acknowledgeAvailabilityAlert();
+  }
+
+  private markNotificationAsRead(notificationId: number): void {
+    this.isMarkingNotificationRead = true;
+    this.notificationError = '';
+
+    this.notificationService
+      .markAsRead(notificationId)
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isMarkingNotificationRead = false;
+        })
+      )
+      .subscribe({
+        next: () => {
+          console.log('[HU22-FE][READ] notificación marcada como leída');
+        },
+        error: (error: HttpErrorResponse) => {
+          console.log(`[HU22-FE][READ][ERROR] status=${error.status} message=${this.getHttpErrorLogMessage(error)}`);
+          this.notificationError = 'No se pudo marcar la notificación como leída.';
+        }
+      });
+  }
+
 
   private loadAvailability(): void {
     this.isLoading = true;
@@ -254,6 +355,54 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck {
     }
 
     this.loadAlertPreferences();
+  }
+
+  private tryLoadNotifications(): void {
+    if (
+      this.hasRequestedNotifications ||
+      this.isLoadingNotifications ||
+      !this.canShowAlertPreferences
+    ) {
+      return;
+    }
+
+    this.loadNotifications();
+  }
+
+  private loadNotifications(): void {
+    this.hasRequestedNotifications = true;
+    this.isLoadingNotifications = true;
+    this.notificationError = '';
+
+    this.notificationService
+      .getMyNotifications()
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isLoadingNotifications = false;
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          const notifications = response.data ?? [];
+          const unreadDailyFirstClassAlerts = notifications.filter((notification) =>
+            notification.type === this.dailyFirstClassAlertType &&
+            !notification.readAt
+          ).length;
+          console.log(`[HU22-FE][NOTIFICATIONS] total=${notifications.length}`);
+          console.log(`[HU22-FE][NOTIFICATIONS] unreadDailyFirstClassAlerts=${unreadDailyFirstClassAlerts}`);
+          const notification = this.findUnreadDailyFirstClassAlert(notifications);
+          if (notification) {
+            this.showAvailabilityAlertModal(notification);
+          }
+        },
+        error: (error: HttpErrorResponse) => {
+          console.log(`[HU22-FE][NOTIFICATIONS][ERROR] status=${error.status} message=${this.getHttpErrorLogMessage(error)}`);
+          if (error.status === 401) {
+            this.router.navigate(['/login']);
+          }
+        }
+      });
   }
 
   private loadAlertPreferences(): void {
@@ -368,5 +517,68 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck {
       this.alertPreferencesMessage = '';
       this.alertPreferencesMessageTimer = null;
     }, 3500);
+  }
+
+  private findUnreadDailyFirstClassAlert(notifications: UserNotification[]): UserNotification | null {
+    return notifications
+      .filter((notification) => this.shouldShowDailyFirstClassAlert(notification))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0] ?? null;
+  }
+
+  private shouldShowDailyFirstClassAlert(notification: UserNotification): boolean {
+    const show =
+      notification.type === this.dailyFirstClassAlertType &&
+      !notification.readAt &&
+      !this.shownAvailabilityNotificationIds.has(notification.id);
+    console.log(`[HU22-FE][FILTER] notificationId=${notification.id} type=${notification.type} readAt=${notification.readAt ?? 'null'} show=${show}`);
+    return show;
+  }
+
+  private connectNotificationSocket(): void {
+    if (!this.canShowAlertPreferences || this.notificationSocketSubscription) {
+      return;
+    }
+
+    this.notificationSocketSubscription = this.notificationSocketService
+      .onNotificationCreated()
+      .subscribe((notification) => {
+        if (this.shouldShowDailyFirstClassAlert(notification)) {
+          console.log('[HU22-FE][SOCKET] alerta HU22 recibida. Mostrando alerta.');
+          this.showAvailabilityAlertModal(notification);
+        }
+      });
+  }
+
+  private showAvailabilityAlertModal(notification: UserNotification): void {
+    if (this.dailyFirstClassAlert?.id === notification.id) {
+      return;
+    }
+
+    this.shownAvailabilityNotificationIds.add(notification.id);
+    this.dailyFirstClassAlert = notification;
+    this.logShowAlert(notification);
+  }
+
+  private logShowAlert(notification: UserNotification): void {
+    console.log(`[HU22-FE][SHOW] mostrando alerta notificationId=${notification.id} title=${notification.title}`);
+  }
+
+  private getAvailableSpaces(notification: UserNotification): number {
+    const data = this.isDailyFirstClassAlertData(notification.data)
+      ? notification.data
+      : null;
+    const available = data?.availability?.cars?.available ?? 0;
+    return Number.isFinite(Number(available)) ? Number(available) : 0;
+  }
+
+  private getHttpErrorLogMessage(error: HttpErrorResponse): string {
+    const message = error.error?.message;
+    return Array.isArray(message)
+      ? message.join(', ')
+      : message || error.message || 'Sin mensaje';
+  }
+
+  private isDailyFirstClassAlertData(data: UserNotification['data']): data is DailyFirstClassAlertData {
+    return !!data && typeof data === 'object';
   }
 }
