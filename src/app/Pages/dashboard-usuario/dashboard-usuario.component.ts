@@ -6,6 +6,8 @@ import { finalize, Subscription, take } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { AlertPreferencesService } from '../../services/alert-preferences.service';
+import { IncidentService } from '../../services/incident.service';
+import { IncidentSocketService } from '../../services/incident-socket.service';
 import { NotificationSocketService } from '../../services/notification-socket.service';
 import { NotificationService } from '../../services/notification.service';
 import { ParkingAvailabilityService } from '../../services/parking-availability.service';
@@ -22,6 +24,7 @@ import {
   DailyFirstClassAlertData,
   UserNotification
 } from '../../models/notification.model';
+import { Incident } from '../../models/incident.model';
 
 @Component({
   selector: 'app-dashboard-usuario',
@@ -34,6 +37,10 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
   private alertPreferencesMessageTimer: ReturnType<typeof setTimeout> | null = null;
   private hasRequestedAlertPreferences = false;
   private hasRequestedNotifications = false;
+  private hasRequestedUserIncidents = false;
+  private incidentCreatedSocketSubscription?: Subscription;
+  private incidentResolvedSocketSubscription?: Subscription;
+  private incidentCancelledSocketSubscription?: Subscription;
   private notificationSocketSubscription?: Subscription;
   private shownAvailabilityNotificationIds = new Set<number>();
   private readonly dailyFirstClassAlertType = 'DAILY_FIRST_CLASS_ALERT';
@@ -53,13 +60,21 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
   alertPreferencesError = '';
   alertPreferencesMessage = '';
   dailyFirstClassAlert: UserNotification | null = null;
+  userIncidents: Incident[] = [];
+  unreadIncidentsCount = 0;
+  showNotificationsPanel = false;
+  isLoadingUserIncidents = false;
   isLoadingNotifications = false;
   isMarkingNotificationRead = false;
+  markingIncidentId: number | null = null;
+  incidentNotificationError = '';
   notificationError = '';
 
   constructor(
     private availabilityService: ParkingAvailabilityService,
     private alertPreferencesService: AlertPreferencesService,
+    private incidentService: IncidentService,
+    private incidentSocketService: IncidentSocketService,
     private notificationSocketService: NotificationSocketService,
     private notificationService: NotificationService,
     private auth: AuthService,
@@ -80,17 +95,24 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     this.loadAvailability();
     this.tryLoadAlertPreferences();
     this.tryLoadNotifications();
+    this.tryLoadUserIncidents();
     this.connectNotificationSocket();
+    this.connectIncidentSocket();
   }
 
   ngDoCheck(): void {
     this.tryLoadAlertPreferences();
     this.tryLoadNotifications();
+    this.tryLoadUserIncidents();
   }
 
   ngOnDestroy(): void {
     this.notificationSocketSubscription?.unsubscribe();
+    this.incidentCreatedSocketSubscription?.unsubscribe();
+    this.incidentResolvedSocketSubscription?.unsubscribe();
+    this.incidentCancelledSocketSubscription?.unsubscribe();
     this.notificationSocketService.disconnect();
+    this.incidentSocketService.disconnect();
   }
 
   get autosAvailable(): number {
@@ -298,6 +320,44 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     this.acknowledgeAvailabilityAlert();
   }
 
+  toggleNotificationsPanel(): void {
+    this.showNotificationsPanel = !this.showNotificationsPanel;
+  }
+
+  markIncidentAsRead(incidentId: number): void {
+    if (this.markingIncidentId) {
+      return;
+    }
+
+    this.markingIncidentId = incidentId;
+    this.isMarkingNotificationRead = true;
+    this.incidentNotificationError = '';
+
+    this.incidentService
+      .markMyIncidentAsRead(incidentId)
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isMarkingNotificationRead = false;
+          this.markingIncidentId = null;
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          const readAt = response.data?.readAt ?? new Date().toISOString();
+          this.userIncidents = this.userIncidents.map((incident) =>
+            incident.id === incidentId
+              ? { ...incident, ...(response.data ?? {}), readAt }
+              : incident
+          );
+          this.updateUnreadIncidentsCount();
+        },
+        error: () => {
+          this.incidentNotificationError = 'No se pudo marcar la incidencia como leída.';
+        }
+      });
+  }
+
   private markNotificationAsRead(notificationId: number): void {
     this.isMarkingNotificationRead = true;
     this.notificationError = '';
@@ -367,6 +427,50 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     }
 
     this.loadNotifications();
+  }
+
+  private tryLoadUserIncidents(): void {
+    if (
+      this.hasRequestedUserIncidents ||
+      this.isLoadingUserIncidents ||
+      !this.canShowAlertPreferences
+    ) {
+      return;
+    }
+
+    this.loadUserIncidents();
+  }
+
+  private loadUserIncidents(): void {
+    this.hasRequestedUserIncidents = true;
+    this.isLoadingUserIncidents = true;
+    this.incidentNotificationError = '';
+
+    this.incidentService
+      .getMyIncidents()
+      .pipe(
+        take(1),
+        finalize(() => {
+          this.isLoadingUserIncidents = false;
+        })
+      )
+      .subscribe({
+        next: (response) => {
+          this.userIncidents = this.sortIncidents(response.data ?? []);
+          const unreadCount = Number(response.meta?.unreadCount ?? NaN);
+          this.unreadIncidentsCount = Number.isFinite(unreadCount)
+            ? unreadCount
+            : this.countUnreadIncidents(this.userIncidents);
+        },
+        error: (error: HttpErrorResponse) => {
+          if (error.status === 401) {
+            this.router.navigate(['/login']);
+            return;
+          }
+
+          this.incidentNotificationError = 'No se pudieron cargar las incidencias.';
+        }
+      });
   }
 
   private loadNotifications(): void {
@@ -549,6 +653,37 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
       });
   }
 
+  private connectIncidentSocket(): void {
+    if (
+      !this.canShowAlertPreferences ||
+      this.incidentCreatedSocketSubscription ||
+      this.incidentResolvedSocketSubscription ||
+      this.incidentCancelledSocketSubscription
+    ) {
+      return;
+    }
+
+    this.incidentCreatedSocketSubscription = this.incidentSocketService
+      .onIncidentCreated()
+      .subscribe((incident) => {
+        this.upsertUnreadIncident(incident);
+      });
+
+    this.incidentResolvedSocketSubscription = this.incidentSocketService
+      .onIncidentResolved()
+      .subscribe((incident) => {
+        this.upsertUnreadIncident(incident);
+        this.showIncidentSocketNotice('Una incidencia fue resuelta');
+      });
+
+    this.incidentCancelledSocketSubscription = this.incidentSocketService
+      .onIncidentCancelled()
+      .subscribe((incident) => {
+        this.upsertUnreadIncident(incident);
+        this.showIncidentSocketNotice('Una incidencia fue cancelada');
+      });
+  }
+
   private showAvailabilityAlertModal(notification: UserNotification): void {
     if (this.dailyFirstClassAlert?.id === notification.id) {
       return;
@@ -557,6 +692,98 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     this.shownAvailabilityNotificationIds.add(notification.id);
     this.dailyFirstClassAlert = notification;
     this.logShowAlert(notification);
+  }
+
+  private upsertUserIncident(incident: Incident): void {
+    const exists = this.userIncidents.some((item) => item.id === incident.id);
+    this.userIncidents = this.sortIncidents(
+      exists
+        ? this.userIncidents.map((item) => item.id === incident.id ? { ...item, ...incident } : item)
+        : [incident, ...this.userIncidents]
+    );
+    this.updateUnreadIncidentsCount();
+  }
+
+  private upsertUnreadIncident(incident: Incident): void {
+    this.upsertUserIncident({
+      ...incident,
+      title: 'Alerta',
+      description: this.getIncidentMessage(incident),
+      readAt: null
+    });
+  }
+
+  getIncidentTitle(_incident: Incident): string {
+    return 'Alerta';
+  }
+
+  getIncidentMessage(incident: Incident): string {
+    const description = this.getRawIncidentDescription(incident.description);
+    const status = incident.status?.toUpperCase();
+
+    if (status === 'RESUELTA') {
+      return `La incidencia fue resuelta: ${description}`;
+    }
+
+    if (status === 'CANCELADA') {
+      return `La incidencia fue cancelada: ${description}`;
+    }
+
+    return `Se registr\u00f3 una incidencia: ${description}`;
+  }
+
+  getIncidentStatusLabel(incident: Incident): string {
+    return incident.status?.toUpperCase() || 'ACTIVA';
+  }
+
+  getIncidentStatusClass(incident: Incident): string {
+    const status = incident.status?.toUpperCase();
+
+    if (status === 'RESUELTA') {
+      return 'incident-state-badge--resolved';
+    }
+
+    if (status === 'CANCELADA') {
+      return 'incident-state-badge--cancelled';
+    }
+
+    return 'incident-state-badge--active';
+  }
+
+  private updateUnreadIncidentsCount(): void {
+    this.unreadIncidentsCount = this.countUnreadIncidents(this.userIncidents);
+  }
+
+  private countUnreadIncidents(incidents: Incident[]): number {
+    return incidents.filter((incident) => !incident.readAt).length;
+  }
+
+  private showIncidentSocketNotice(message: string): void {
+    this.incidentNotificationError = '';
+    this.alertPreferencesMessage = message;
+
+    if (this.alertPreferencesMessageTimer) {
+      clearTimeout(this.alertPreferencesMessageTimer);
+    }
+
+    this.alertPreferencesMessageTimer = setTimeout(() => {
+      this.alertPreferencesMessage = '';
+      this.alertPreferencesMessageTimer = null;
+    }, 3000);
+  }
+
+  private getRawIncidentDescription(value: string): string {
+    return String(value ?? '')
+      .replace(/^Se registr[oó] una incidencia:\s*/i, '')
+      .replace(/^La incidencia fue resuelta:\s*/i, '')
+      .replace(/^La incidencia fue cancelada:\s*/i, '')
+      .trim();
+  }
+
+  private sortIncidents(incidents: Incident[]): Incident[] {
+    return [...incidents].sort((a, b) =>
+      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
   }
 
   private logShowAlert(notification: UserNotification): void {

@@ -18,12 +18,53 @@
         <button class="incident-btn" type="button" (click)="registerIncident()">+ Registrar incidencia</button>
       </div>
 
-      @if (incidencias.length) {
-        <ul class="incident-list">
-          @for (incidencia of incidencias; track incidencia) {
-            <li>{{ incidencia }}</li>
+      @if (incidentMessage) {
+        <p class="incident-status incident-status--success">{{ incidentMessage }}</p>
+      }
+
+      @if (incidentError && !showIncidentModal) {
+        <p class="incident-status incident-status--error">{{ incidentError }}</p>
+      }
+
+      @if (isLoadingIncidents) {
+        <p class="empty-state">Cargando incidencias...</p>
+      } @else if (incidencias.length) {
+        <div class="incident-list">
+          @for (incidencia of incidencias; track incidencia.id) {
+            <article class="incident-item">
+              <div>
+                @if (incidencia.title) {
+                  <h3>{{ incidencia.title }}</h3>
+                }
+                <p>{{ incidencia.description }}</p>
+                <span>{{ incidencia.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+              <div class="incident-actions">
+                <span
+                  class="incident-badge"
+                  [class.incident-badge--resolved]="isResolvedIncident(incidencia)">
+                  {{ getIncidentStatusLabel(incidencia) }}
+                </span>
+                @if (isActiveIncident(incidencia)) {
+                  <button
+                    class="resolve-btn"
+                    type="button"
+                    (click)="resolveIncident(incidencia)"
+                    [disabled]="resolvingIncidentId === incidencia.id || cancellingIncidentId === incidencia.id">
+                    {{ resolvingIncidentId === incidencia.id ? 'Marcando...' : 'Marcar como resuelta' }}
+                  </button>
+                  <button
+                    class="cancel-incident-btn"
+                    type="button"
+                    (click)="cancelIncident(incidencia)"
+                    [disabled]="resolvingIncidentId === incidencia.id || cancellingIncidentId === incidencia.id">
+                    {{ cancellingIncidentId === incidencia.id ? 'Cancelando...' : 'Cancelar' }}
+                  </button>
+                }
+              </div>
+            </article>
           }
-        </ul>
+        </div>
       } @else {
         <p class="empty-state">No hay incidencias registradas</p>
       }
@@ -68,4 +109,33 @@
       </div>
     </section>
   </main>
+
+  @if (showIncidentModal) {
+    <div class="incident-modal-backdrop" (click)="closeIncidentModal()">
+      <section class="incident-modal" (click)="$event.stopPropagation()">
+        <h2>Registrar incidencia</h2>
+        <label for="incidentDescription">Descripci&oacute;n de la incidencia</label>
+        <textarea
+          id="incidentDescription"
+          name="incidentDescription"
+          rows="5"
+          placeholder="Describe lo que ocurri&oacute; en el parqueo..."
+          [(ngModel)]="incidentDescription">
+        </textarea>
+
+        @if (incidentError) {
+          <p class="incident-status incident-status--error">{{ incidentError }}</p>
+        }
+
+        <div class="incident-modal-actions">
+          <button class="modal-btn modal-btn--ghost" type="button" (click)="closeIncidentModal()" [disabled]="isSavingIncident">
+            Cancelar
+          </button>
+          <button class="modal-btn modal-btn--primary" type="button" (click)="saveIncident()" [disabled]="isSavingIncident">
+            {{ isSavingIncident ? 'Guardando...' : 'Guardar' }}
+          </button>
+        </div>
+      </section>
+    </div>
+  }
 </div>

@@ -6,10 +6,66 @@
       <span class="navbar-title">MiParking UCB</span>
       <span class="navbar-welcome">Bienvenido {{ welcomeName }}</span>
     </div>
+    <div class="navbar-actions">
+      @if (canShowAlertPreferences) {
+        <button class="notification-btn" type="button" (click)="toggleNotificationsPanel()" aria-label="Ver incidencias">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          @if (unreadIncidentsCount > 0) {
+            <span>{{ unreadIncidentsCount }}</span>
+          }
+        </button>
+      }
     <button class="navbar-btn" (click)="onNavbarAction()">
       {{ isAuthenticated ? 'Cerrar sesión' : 'Iniciar sesión' }}
     </button>
+    </div>
   </nav>
+
+  @if (showNotificationsPanel && canShowAlertPreferences) {
+    <section class="notifications-panel">
+      <div class="notifications-header">
+        <h2>Incidencias</h2>
+        <button type="button" (click)="toggleNotificationsPanel()" aria-label="Cerrar incidencias">&times;</button>
+      </div>
+
+      @if (isLoadingUserIncidents) {
+        <p class="state-message">Cargando incidencias...</p>
+      } @else if (userIncidents.length) {
+        <div class="notifications-list">
+          @for (incident of userIncidents; track incident.id) {
+            <article class="notification-item" [class.notification-item--read]="incident.readAt">
+              <div>
+                <div class="notification-title-row">
+                  <h3>{{ getIncidentTitle(incident) }}</h3>
+                  <span class="incident-state-badge" [ngClass]="getIncidentStatusClass(incident)">
+                    {{ getIncidentStatusLabel(incident) }}
+                  </span>
+                </div>
+                <p>{{ getIncidentMessage(incident) }}</p>
+                <span>{{ incident.createdAt | date: 'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+              @if (!incident.readAt) {
+                <button
+                  type="button"
+                  (click)="markIncidentAsRead(incident.id)"
+                  [disabled]="markingIncidentId === incident.id">
+                  {{ markingIncidentId === incident.id ? 'Marcando...' : 'Marcar como le&iacute;da' }}
+                </button>
+              } @else {
+                <span class="read-badge">Le&iacute;da</span>
+              }
+            </article>
+          }
+        </div>
+      } @else {
+        <p class="state-message">No tienes incidencias</p>
+      }
+
+      @if (incidentNotificationError) {
+        <p class="alerts-error">{{ incidentNotificationError }}</p>
+      }
+    </section>
+  }
 
   <!-- Action buttons -->
   <div class="actions-bar">
