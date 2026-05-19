@@ -15,8 +15,8 @@
 .status-card span{display:block;color:#64748b;font-size:.82rem;font-weight:700}
 .status-card strong{display:block;margin-top:.15rem;font-size:1.45rem;line-height:1}
 .status-card--free{border-color:#22c55e}.status-card--occupied{border-color:#ef4444}.status-card--maintenance{border-color:#f59e0b}
-.map-wrapper{width:100%;border:1px solid #d8e0ea;border-radius:16px;padding:12px 12px 24px;background:#f8fafc;overflow-x:auto;overflow-y:visible;display:flex;justify-content:center;align-items:flex-start;margin-bottom:20px;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
-.parking-map-svg{display:block;width:min(100%,820px);max-width:820px;height:auto;aspect-ratio:1630 / 2320;min-height:420px;flex:0 0 auto;touch-action:manipulation}
+.map-wrapper{width:100%;border:1px solid #d8e0ea;border-radius:16px;padding:12px 12px 24px;background:#f8fafc;overflow-x:auto;overflow-y:visible;display:flex;justify-content:center;align-items:flex-start;margin-bottom:20px;min-height:auto;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y}
+.parking-map-svg{display:block;width:min(100%,820px);max-width:820px;height:1168px;border:0;flex:0 0 auto;touch-action:manipulation}
 .state-message{margin:0;color:#64748b;text-align:center;padding:1.25rem;border-radius:14px;background:#f8fafc}
 .map-loading{display:flex;align-items:center;justify-content:center;gap:.5rem}
 .state-message--error{color:#ef4444;background:#fff1f2}
@@ -33,5 +33,5 @@
 .legend-swatch.occupied{background:#ef4444}
 .legend-swatch.maintenance{background:#f59e0b}
 .stale-map-backdrop{position:fixed;inset:0;z-index:50;display:grid;place-items:center;background:rgba(15,23,42,.52);padding:1rem}.stale-map-modal{width:min(420px,100%);border-radius:18px;background:#fff;box-shadow:0 24px 70px rgba(15,23,42,.28);padding:1.35rem;text-align:center}.stale-map-modal h2{margin:0;color:#0b1633;font-size:1.25rem}.stale-map-modal p{margin:.75rem 0 1.2rem;color:#475569;font-weight:700;line-height:1.45}.stale-map-modal button{min-height:44px;border:0;border-radius:12px;background:#0d47a1;color:#fff;padding:.7rem 1.1rem;font-weight:850}
-@media (max-width:1024px){.map-wrapper{justify-content:center}.parking-map-svg{width:min(100%,760px);max-width:760px}}
-@media (max-width:640px){.header-inner{align-items:flex-start;flex-direction:column}.map-content{width:calc(100% - 1rem)}.map-card{padding:1rem}.map-wrapper{padding:8px 8px 24px;margin-bottom:18px}.status-summary,.legend{grid-template-columns:1fr}.map-legend{gap:12px;margin-bottom:16px}.parking-map-svg{width:100%;max-width:100%;min-width:0;min-height:360px}}
+@media (max-width:1024px){.map-wrapper{justify-content:flex-start}.parking-map-svg{width:760px;min-width:760px;max-width:none;height:1082px}}
+@media (max-width:640px){.header-inner{align-items:flex-start;flex-direction:column}.map-content{width:calc(100% - 1rem)}.map-card{padding:1rem}.map-wrapper{padding:8px 8px 24px;margin-bottom:18px}.status-summary,.legend{grid-template-columns:1fr}.map-legend{gap:12px;margin-bottom:16px}.parking-map-svg{width:700px;min-width:700px;max-width:none;height:997px}}
