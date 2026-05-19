@@ -49,12 +49,12 @@
           </div>
         </div>
 
-        <div class="map-wrapper map-viewport">
+        <div class="map-wrapper map-viewport miparking-map-card miparking-map-viewport">
           <object
             #parkingSvg
-            data="assets/maps/parking-map.svg"
+            data="assets/maps/parking-map.svg?v=2"
             type="image/svg+xml"
-            class="parking-map-svg"
+            class="parking-map-svg miparking-map-svg"
             (load)="onSvgLoaded()">
           </object>
         </div>
@@ -67,7 +67,7 @@
           <p class="realtime-message">{{ realtimeMessage }}</p>
         }
 
-        <div class="legend map-legend" aria-label="Leyenda de estados">
+        <div class="legend map-legend miparking-map-legend" aria-label="Leyenda de estados">
           <div class="legend-item"><span class="legend-swatch available"></span>Libre</div>
           <div class="legend-item"><span class="legend-swatch occupied"></span>Ocupado</div>
           <div class="legend-item"><span class="legend-swatch maintenance"></span>Mantenimiento</div>
