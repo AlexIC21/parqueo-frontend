@@ -383,12 +383,34 @@ export class MapaComponent implements OnInit, OnDestroy {
       return;
     }
 
-    const minutes = lastUpdate.minutesSinceLastUpdate;
-    this.staleMapAlertMessage = Number.isFinite(Number(minutes))
-      ? `El mapa no se actualiz\u00f3 hace ${Number(minutes)} minutos.`
-      : 'El mapa a\u00fan no tiene una actualizaci\u00f3n registrada.';
+    const elapsedText = this.formatElapsedTime(lastUpdate.minutesSinceLastUpdate ?? null);
+    this.staleMapAlertMessage = `El mapa no se actualiz\u00f3 hace ${elapsedText}.`;
     this.hasShownStaleMapAlert = true;
     this.showStaleMapAlert = true;
+  }
+
+  private formatElapsedTime(minutes: number | null): string {
+    if (minutes === null || minutes === undefined || !Number.isFinite(Number(minutes))) {
+      return 'un tiempo no registrado';
+    }
+
+    const totalMinutes = Math.max(0, Math.floor(Number(minutes)));
+
+    if (totalMinutes < 60) {
+      return `${totalMinutes} ${totalMinutes === 1 ? 'minuto' : 'minutos'}`;
+    }
+
+    const hours = Math.floor(totalMinutes / 60);
+    const remainingMinutes = totalMinutes % 60;
+    const hourText = `${hours} ${hours === 1 ? 'hora' : 'horas'}`;
+
+    if (remainingMinutes === 0) {
+      return hourText;
+    }
+
+    const minuteText = `${remainingMinutes} ${remainingMinutes === 1 ? 'minuto' : 'minutos'}`;
+
+    return `${hourText} y ${minuteText}`;
   }
 
   private markMapAsRecentlyUpdated(): void {
