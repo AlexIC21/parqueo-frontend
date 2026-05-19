@@ -74,6 +74,15 @@ export class MapaComponent implements OnInit, OnDestroy {
   onSvgLoaded(): void {
     this.svgReady = true;
     this.svgDoc = this.parkingSvg?.nativeElement.contentDocument ?? null;
+    const svg = this.svgDoc?.querySelector('svg');
+    console.log('[MAPA][SVG] viewBox:', svg?.getAttribute('viewBox'));
+    console.log('[MAPA][SVG] width:', svg?.getAttribute('width'));
+    console.log('[MAPA][SVG] height:', svg?.getAttribute('height'));
+    try {
+      console.log('[MAPA][SVG] bbox:', svg?.getBBox?.());
+    } catch (error) {
+      console.warn('[MAPA][SVG] bbox no disponible:', error);
+    }
     this.cacheSvgElements();
     this.paintSpaces();
   }
