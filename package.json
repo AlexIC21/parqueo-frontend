@@ -6,6 +6,7 @@
     "start": "ng serve",
     "build": "ng build",
     "build:prod": "ionic build --project parqueo-frontend --configuration production",
+    "build:prod2": "ng run parqueo-frontend:build:production",
     "watch": "ng build --watch --configuration development",
     "test": "ng test",
     "cap:sync": "npx cap sync",
