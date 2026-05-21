@@ -2,7 +2,7 @@ import { Component, DoCheck, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { finalize, Subscription, take } from 'rxjs';
+import { catchError, EMPTY, finalize, Subscription, switchMap, take, timer } from 'rxjs';
 import { HttpErrorResponse } from '@angular/common/http';
 import { AuthService } from '../../services/auth.service';
 import { AlertPreferencesService } from '../../services/alert-preferences.service';
@@ -18,7 +18,9 @@ import {
 } from '../../models/alert-preferences.model';
 import {
   ParkingAvailabilityData,
-  ParkingAvailabilityResponse
+  ParkingAvailabilityResponse,
+  ParkingCounterData,
+  ParkingCounterResponse
 } from '../../models/parking.model';
 import {
   ClassScheduleAlertData,
@@ -43,11 +45,14 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
   private incidentCancelledSocketSubscription?: Subscription;
   private notificationSocketSubscription?: Subscription;
   private parkingSocketSubscription?: Subscription;
+  private parkingCounterPollingSubscription?: Subscription;
   private shownAvailabilityNotificationIds = new Set<number>();
   private readonly dailyFirstClassAlertType = 'DAILY_FIRST_CLASS_ALERT';
   private readonly classScheduleAlertType = 'CLASS_SCHEDULE_ALERT';
+  private readonly parkingCounterPollingMs = 10000;
 
   availability: ParkingAvailabilityData | null = null;
+  parkingCounter: ParkingCounterData | null = null;
   isLoading = true;
   errorMessage = '';
   showGuestModal = false;
@@ -89,7 +94,6 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     const userRole = this.auth.getUserRole();
     console.log('[HU22-FE][DASHBOARD] cargando dashboard usuario');
     console.log(`[HU22-FE][DASHBOARD] userRole=${userRole ?? 'null'}`);
-    console.log(`[HU22-FE][DASHBOARD] tokenExists=${!!this.auth.getToken()}`);
 
     if (this.auth.isAuthenticated() && this.auth.currentUser?.role?.trim().toUpperCase() === 'GUARDIA') {
       this.router.navigate(['/dashboard-guardia']);
@@ -97,6 +101,7 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     }
 
     this.loadAvailability();
+    this.startParkingCounterPolling();
     this.tryLoadAlertPreferences();
     this.tryLoadNotifications();
     this.tryLoadUserIncidents();
@@ -117,13 +122,14 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
     this.incidentResolvedSocketSubscription?.unsubscribe();
     this.incidentCancelledSocketSubscription?.unsubscribe();
     this.parkingSocketSubscription?.unsubscribe();
+    this.parkingCounterPollingSubscription?.unsubscribe();
     this.notificationSocketService.disconnect();
     this.incidentSocketService.disconnect();
     this.parkingSocketService.disconnect();
   }
 
   get autosAvailable(): number {
-    return this.availability?.cars.available ?? 0;
+    return this.parkingCounter?.availableSpaces ?? this.availability?.cars.available ?? 0;
   }
 
   get motosAvailable(): number {
@@ -131,7 +137,7 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
   }
 
   get availabilityUpdatedAt(): string | null {
-    return this.availability?.lastMapUpdateAt ?? this.availability?.updatedAt ?? null;
+    return this.parkingCounter?.updatedAt ?? this.availability?.lastMapUpdateAt ?? this.availability?.updatedAt ?? null;
   }
 
   get isAuthenticated(): boolean {
@@ -350,9 +356,12 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
         next: (response: ParkingAvailabilityResponse) => {
           this.availability = response.data;
         },
-        error: () => {
+        error: (error: HttpErrorResponse) => {
+          console.log(`[AVAILABILITY][ERROR] status=${error.status}`);
+          console.log(`[AVAILABILITY][ERROR] url=${error.url ?? 'null'}`);
+          console.log(`[AVAILABILITY][ERROR] message=${error.message}`);
           this.availability = null;
-          this.errorMessage = 'No se pudo cargar la disponibilidad';
+          this.errorMessage = this.parkingCounter ? '' : 'No se pudo cargar la disponibilidad';
         }
       });
   }
@@ -366,9 +375,36 @@ export class DashboardUsuarioComponent implements OnInit, DoCheck, OnDestroy {
           this.availability = response.data;
           this.errorMessage = '';
         },
-        error: () => {
-          this.errorMessage = 'No se pudo cargar la disponibilidad';
+        error: (error: HttpErrorResponse) => {
+          console.log(`[AVAILABILITY][ERROR] status=${error.status}`);
+          console.log(`[AVAILABILITY][ERROR] url=${error.url ?? 'null'}`);
+          console.log(`[AVAILABILITY][ERROR] message=${error.message}`);
+          this.errorMessage = this.parkingCounter ? '' : 'No se pudo cargar la disponibilidad';
         }
+      });
+  }
+
+  private startParkingCounterPolling(): void {
+    if (this.parkingCounterPollingSubscription) {
+      return;
+    }
+
+    this.parkingCounterPollingSubscription = timer(0, this.parkingCounterPollingMs)
+      .pipe(
+        switchMap(() =>
+          this.availabilityService.getCounter().pipe(
+            catchError((error: HttpErrorResponse) => {
+              console.log(`[COUNTER][ERROR] status=${error.status}`);
+              console.log(`[COUNTER][ERROR] url=${error.url ?? 'null'}`);
+              console.log(`[COUNTER][ERROR] message=${error.message}`);
+              return EMPTY;
+            })
+          )
+        )
+      )
+      .subscribe((response: ParkingCounterResponse) => {
+        this.parkingCounter = response.data;
+        this.errorMessage = '';
       });
   }
 

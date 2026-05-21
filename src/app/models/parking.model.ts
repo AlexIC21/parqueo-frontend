@@ -11,6 +11,19 @@ export interface ParkingAvailabilityResponse {
   data: ParkingAvailabilityData;
 }
 
+export interface ParkingCounterResponse {
+  success: boolean;
+  message: string;
+  data: ParkingCounterData;
+}
+
+export interface ParkingCounterData {
+  availableSpaces: number;
+  occupiedSpaces: number;
+  totalCapacity: number;
+  updatedAt: string;
+}
+
 export interface ParkingAvailabilityData {
   cars: VehicleAvailability;
   motorcycles: VehicleAvailability;
